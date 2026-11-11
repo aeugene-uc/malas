@@ -1,0 +1,7 @@
+.env
+node_modules/
+dist/
+.dart_tool/
+build/
+.idea/
+*.iml
