@@ -45,8 +45,9 @@ backend/   Express + TypeScript + Prisma on MariaDB
 
 ## Git
 
-- One branch per issue (`s5-save-path`, `f3-draft-screen`). The PR says `Closes #N`.
-- Commits are small and sequential: each one builds, and each one does one step. Rebase onto `main` before opening the PR, so history stays a straight line.
-- Another developer on the same side reviews the PR before it merges. No direct pushes to `main`.
+- One branch per issue (`s5-save-path`, `f3-draft-screen`). No pull requests.
+- Commits are small and sequential: each one builds, and each one does one step.
+- When the issue is done: rebase the branch onto `main`, merge it into `main`, push. The last commit message says `Closes #N`.
+- Announce each merge in Multiplayr DEPD/App/App with the issue number and which spec §8 flow Obie should test. All team communication goes through Multiplayr.
 - `.env` is never committed. Copy `backend/.env.example`.
 - Commit as yourself.
