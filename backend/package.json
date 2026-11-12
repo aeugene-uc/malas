@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types test/**/*.test.ts",
+    "test": "node --import tsx --test test/**/*.test.ts",
     "prisma": "prisma"
   },
   "dependencies": {
