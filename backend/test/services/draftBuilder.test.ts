@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { HeardLine } from "../../src/ai/readPrompt.js";
-import { buildDrafts } from "../../src/services/draftBuilder.js";
+import { buildDrafts, type PrintedDocument } from "../../src/services/draftBuilder.js";
 
 const today = "2026-11-12";
 
@@ -120,4 +120,65 @@ test("keepsMoneyInAndMoneyOutInSeparateTransactions", () => {
     heard({ name: "teh", amountText: "5 ribu" }),
   ]);
   assert.deepEqual(drafts.map((draft) => [draft.direction, draft.total]), [["IN", 15_000], ["OUT", 20_000]]);
+});
+
+const receiptDocument: PrintedDocument = { seller: "Toko Sumber Rejeki", date: "2026-11-10", totalText: "50000" };
+
+function buildPrinted(heardLines: HeardLine[], document: PrintedDocument = receiptDocument, source: "PHOTO" | "NOTEBOOK" = "PHOTO") {
+  return buildDrafts({ heardLines, source, inputId: "input-2", todayBusinessDate: today, document });
+}
+
+test("makesTheSellerThePersonAndTheDocumentDateTheBusinessDate", () => {
+  const draft = buildPrinted([
+    heard({ direction: "OUT", name: "gula", quantityText: "2", unit: "kg", unitPriceText: "15000", amountText: "30000" }),
+  ]).drafts[0];
+  assert.deepEqual([draft?.personName, draft?.businessDate, draft?.payments[0]?.date], ["Toko Sumber Rejeki", "2026-11-10", "2026-11-10"]);
+});
+
+test("letsThePrintedGrandTotalWinOverTheSumOfTheLines", () => {
+  const draft = buildPrinted([
+    heard({ direction: "OUT", name: "gula", amountText: "30000" }),
+    heard({ direction: "OUT", name: "minyak", amountText: "18000" }),
+  ]).drafts[0];
+  assert.deepEqual([draft?.total, draft?.payments.map((payment) => payment.amount)], [50_000, [50_000]]);
+});
+
+test("ignoresThePrintedTotalWhenThePageBecameSeveralTransactions", () => {
+  const { drafts } = buildPrinted(
+    [heard({ name: "kopi", amountText: "10 ribu" }), heard({ direction: "OUT", name: "gula", amountText: "20 ribu" })],
+    { seller: null, date: null, totalText: "99999" },
+    "NOTEBOOK",
+  );
+  assert.deepEqual(drafts.map((draft) => draft.total), [10_000, 20_000]);
+});
+
+test("flagsAPrintedLineWhereQuantityTimesPriceIsNotTheLineTotal", () => {
+  const { drafts, warnings } = buildPrinted([
+    heard({ direction: "OUT", name: "gula", quantityText: "2", unitPriceText: "15000", amountText: "31000" }),
+  ]);
+  assert.equal(drafts[0]?.lines[0]?.lineTotal, 31_000);
+  assert.deepEqual(warnings.map((warning) => warning.code), ["UNCLEAR_READ"]);
+});
+
+test("doesNotFlagASpokenTotalThatDiffersFromQuantityTimesPrice", () => {
+  const { warnings } = build([heard({ name: "kopi", quantityText: "3", unitPriceText: "15 ribu", amountText: "40 ribu" })]);
+  assert.deepEqual(warnings, []);
+});
+
+test("keepsABareSmallAmountOnAPrintedPageButFlagsIt", () => {
+  const { drafts, warnings } = buildPrinted([heard({ name: "kopi", amountText: "15" })], { seller: null, date: null, totalText: null }, "NOTEBOOK");
+  assert.deepEqual([drafts[0]?.lines[0]?.lineTotal, drafts[0]?.lines[0]?.quantity], [15, null]);
+  assert.deepEqual(warnings.map((warning) => warning.code), ["UNCLEAR_READ"]);
+});
+
+test("ignoresAndFlagsADocumentDateInTheFutureOrNotARealDay", () => {
+  for (const date of ["2026-12-01", "2026-02-30", "2026-13-01", "12/11/2026"]) {
+    const { drafts, warnings } = buildPrinted([heard({ name: "kopi", amountText: "10 ribu" })], { seller: null, date, totalText: null });
+    assert.deepEqual([drafts[0]?.businessDate, warnings.length], [undefined, 1], date);
+  }
+});
+
+test("flagsAPrintedTotalItCouldNotReadAndKeepsTheSumOfTheLines", () => {
+  const { drafts, warnings } = buildPrinted([heard({ direction: "OUT", name: "gula", amountText: "30000" })], { seller: null, date: null, totalText: "lunas" });
+  assert.deepEqual([drafts[0]?.total, warnings.length], [30_000, 1]);
 });
