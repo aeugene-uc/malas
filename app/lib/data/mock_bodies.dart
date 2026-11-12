@@ -84,7 +84,7 @@ const Map<String, Object> mockBodiesByRoute = {
     'drafts': [
       {
         'direction': 'IN',
-        'total': 205000,
+        'total': 180000,
         'personId': null,
         'personName': null,
         'dueDate': null,
@@ -105,14 +105,16 @@ const Map<String, Object> mockBodiesByRoute = {
             'itemId': 'item-2',
             'itemName': 'Es teh',
             'categoryId': 'cat-1',
-            'quantity': null,
+            // "es teh selawe": selawe is a quantity (spec 7.3), and with
+            // no saved price yet the line has no total.
+            'quantity': '25',
             'unit': null,
             'unitPrice': null,
-            'lineTotal': 25000,
+            'lineTotal': null,
           },
         ],
         'payments': [
-          {'date': '2026-11-11', 'amount': 205000, 'label': null},
+          {'date': '2026-11-11', 'amount': 180000, 'label': null},
         ],
       },
       {
@@ -163,7 +165,12 @@ const Map<String, Object> mockBodiesByRoute = {
       },
     ],
     'warnings': [
-      {'draft': 1, 'line': 0, 'code': 'NEW_ITEM', 'message': 'Baru'},
+      {
+        'code': 'UNCLEAR_READ',
+        'message': 'Kurang jelas, cek lagi',
+        'draftIndex': 0,
+        'lineIndex': 1,
+      },
     ],
   },
   'POST /transactions': {
@@ -171,8 +178,8 @@ const Map<String, Object> mockBodiesByRoute = {
       'id': 'trx-new',
       'businessDate': '2026-11-11',
       'direction': 'IN',
-      'total': 205000,
-      'paid': 205000,
+      'total': 180000,
+      'paid': 180000,
       'remaining': 0,
       'editCount': 0,
       'hasRetur': false,
