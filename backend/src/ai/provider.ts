@@ -17,13 +17,13 @@ export type AiResult<T> =
 
 // Google AI Studio's native API. Its OpenAI-compatible route failed every call
 // in our test (#122), while this one answered.
-const MODEL = "gemma-4-31b-it";
+const MODEL = "gemini-3.5-flash-lite";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-// Spec §12 says 20 s, but Gemma 4 on the free tier took 38-51 s per read in
-// our test. Raised for dev by Eugene's decision in #123; the app shows a
-// reading state meanwhile.
-export const AI_TIMEOUT_MS = 60_000;
+// Gemini 3.5 Flash-Lite answered in 1-2 s in our test, while Gemma 4 on the
+// same API took 38-51 s (#130), so it replaces Gemma. Going back is this one
+// constant. The 20 s limit is spec §12.
+export const AI_TIMEOUT_MS = 20_000;
 const ATTEMPTS = 2;
 
 // Spec §12: bad JSON or a timeout gets one retry, then an empty draft. A failed

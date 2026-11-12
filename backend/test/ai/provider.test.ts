@@ -40,7 +40,7 @@ afterEach(() => mock.restoreAll());
 test("returnsValidatedDataOnFirstTry", async () => {
   const bodies = mockFetch([{ parts: [{ text: '{"lines":[{"name":"kopi"}]}' }] }]);
   const result = await callModel(request, readLines);
-  assert.deepEqual(result, { isRead: true, data: { lines: [{ name: "kopi" }] }, model: "gemma-4-31b-it", tokens: 42 });
+  assert.deepEqual(result, { isRead: true, data: { lines: [{ name: "kopi" }] }, model: "gemini-3.5-flash-lite", tokens: 42 });
   assert.equal(bodies.length, 1);
 });
 
@@ -77,6 +77,6 @@ test("failsAfterOneRetrySoTheCallerReturnsAnEmptyDraft", async () => {
   const timeout = new DOMException("timed out", "TimeoutError");
   const bodies = mockFetch([{ error: timeout }, { status: 500 }, { parts: [{ text: '{"lines":[]}' }] }]);
   const result = await callModel(request, readLines);
-  assert.deepEqual(result, { isRead: false, failures: ["attempt 1: no reply within 60 s", "attempt 2: HTTP 500"] });
+  assert.deepEqual(result, { isRead: false, failures: ["attempt 1: no reply within 20 s", "attempt 2: HTTP 500"] });
   assert.equal(bodies.length, 2);
 });
