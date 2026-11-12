@@ -5,6 +5,8 @@ import 'package:malas/main.dart';
 void main() {
   testWidgets('opensOnBerandaAndSwitchesTabWhenTapped', (tester) async {
     await tester.pumpWidget(MalasApp(apiClient: buildApiClient(baseUrl: '')));
+    // Beranda loads /home on open; let it finish so no request is left hanging.
+    await tester.pumpAndSettle();
 
     expect(_selectedTabIndex(tester), 0);
 
@@ -14,7 +16,7 @@ void main() {
         matching: find.text('Catatan'),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(_selectedTabIndex(tester), 1);
     expect(tester.widget<IndexedStack>(find.byType(IndexedStack)).index, 1);
