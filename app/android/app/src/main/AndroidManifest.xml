@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- The evening reminder is rescheduled after a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="malas"
         android:name="${applicationName}"
@@ -53,6 +54,10 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ hides the speech recogniser from speech_to_text without this. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>
