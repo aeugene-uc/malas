@@ -45,6 +45,9 @@ dependencies:
   # archive newer than pdf 3.12 allows, and pdf can't go past 3.12 while
   # flutter_local_notifications 21 pins xml 6.
   image: ">=4.0.0 <4.6.0"
+  speech_to_text: ^7.5.0
+  image_picker: ^1.2.4
+  crypto: ^3.0.8
 
 dev_dependencies:
   flutter_test:
