@@ -1,5 +1,15 @@
 import 'transaction.dart';
 
+/// What a Foto shows, as `POST /ai/read` names it (§7.2).
+enum PhotoKind {
+  nota('PHOTO'),
+  bukuCatatan('NOTEBOOK');
+
+  const PhotoKind(this.wireValue);
+
+  final String wireValue;
+}
+
 /// What `POST /ai/read` returns: one voice note can hold several
 /// transactions, so it comes back as several drafts.
 class AiReadResult {

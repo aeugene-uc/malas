@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/draft_repository.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
+import 'package:malas/model/draft.dart';
+
+import '../support/recording_adapter.dart';
 
 void main() {
   test('readTranscriptReturnsTheDrafts', () async {
@@ -14,6 +18,23 @@ void main() {
 
     final result = await repository.readTranscript('jual nasi goreng 12');
 
+    expect(result.drafts, hasLength(3));
+  });
+
+  test('readPhotoSendsTheKindAndTheSha256OfTheImage', () async {
+    final adapter = RecordingAdapter(bodiesByRoute: mockBodiesByRoute);
+    final dio = Dio(BaseOptions(baseUrl: 'http://mock'))
+      ..httpClientAdapter = adapter;
+    final imageBytes = Uint8List.fromList(utf8.encode('nota'));
+
+    final result = await DraftRepository(ApiClient(dio))
+        .readPhoto(kind: PhotoKind.bukuCatatan, imageBytes: imageBytes);
+
+    final form = adapter.lastRequest.data as FormData;
+    final fieldsByName = Map.fromEntries(form.fields);
+    expect(fieldsByName['kind'], 'NOTEBOOK');
+    expect(fieldsByName['imageHash'], sha256.convert(imageBytes).toString());
+    expect(form.files.single.key, 'image');
     expect(result.drafts, hasLength(3));
   });
 
