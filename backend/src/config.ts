@@ -3,7 +3,7 @@ export type Config = {
   port: number;
   nodeEnv: "development" | "production" | "test";
   jwtSecret: string;
-  nvidiaApiKey: string;
+  gemmaApiKey: string;
 };
 
 // Read once at startup so a missing variable fails on boot rather than on the
@@ -16,7 +16,7 @@ function loadConfig(): Config {
     port: Number(process.env.PORT ?? 3000),
     nodeEnv: readNodeEnv(),
     jwtSecret: requireEnv("JWT_SECRET"),
-    nvidiaApiKey: process.env.NVIDIA_API_KEY ?? "",
+    gemmaApiKey: process.env.GEMMA_API_KEY ?? "",
   };
 }
 
