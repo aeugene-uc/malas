@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/api_client.dart';
+import 'data/draft_repository.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
 import 'view/app_shell.dart';
@@ -46,6 +47,7 @@ class MalasApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<ApiClient>.value(value: apiClient),
+        Provider(create: (_) => DraftRepository(apiClient)),
         ChangeNotifierProvider(create: (_) => AppShellViewModel()),
       ],
       child: MaterialApp(
