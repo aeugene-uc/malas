@@ -7,7 +7,8 @@ export type WarningCode =
   | "PRICE_IMPLAUSIBLE"
   | "ITEM_NO_PRICE"
   | "TOTAL_MISMATCH"
-  | "OVERPAID";
+  | "OVERPAID"
+  | "UNCLEAR_READ";
 
 export type Warning = {
   code: WarningCode;
@@ -24,6 +25,7 @@ const messageByCode: Record<WarningCode, string> = {
   ITEM_NO_PRICE: "Harga belum ada",
   TOTAL_MISMATCH: "Total tidak sama dengan jumlah baris",
   OVERPAID: "Bayarnya lebih, sisanya dikembalikan",
+  UNCLEAR_READ: "Kurang jelas, cek lagi",
 };
 
 export function buildWarning(code: WarningCode, ids: Omit<Warning, "code" | "message"> = {}): Warning {
