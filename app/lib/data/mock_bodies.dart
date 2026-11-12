@@ -188,4 +188,5 @@ const Map<String, Object> mockBodiesByRoute = {
     },
     'warnings': <Object>[],
   },
+  'DELETE /transactions/:id': {'ok': true},
 };
