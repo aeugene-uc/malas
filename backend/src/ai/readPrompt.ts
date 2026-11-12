@@ -58,7 +58,7 @@ export function validateHeardLines(value: unknown): HeardLine[] {
   return lines.map((line, index) => validateHeardLine(line, index));
 }
 
-function validateHeardLine(value: unknown, index: number): HeardLine {
+export function validateHeardLine(value: unknown, index: number): HeardLine {
   const line = (value ?? {}) as Record<string, unknown>;
   const at = `lines[${index}]`;
   const direction = line.direction;
@@ -87,7 +87,7 @@ function validateHeardLine(value: unknown, index: number): HeardLine {
 }
 
 // The model sometimes answers 12 where it was asked for "12".
-function readText(value: unknown, path: string): string | null {
+export function readText(value: unknown, path: string): string | null {
   if (value === null || value === undefined) {
     return null;
   }
