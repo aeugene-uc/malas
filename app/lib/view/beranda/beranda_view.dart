@@ -6,6 +6,8 @@ import '../../data/home_repository.dart';
 import '../../model/home.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/beranda_view_model.dart';
+import '../bicara/bicara_view.dart';
+import '../foto/foto_view.dart';
 import '../format.dart';
 
 /// Spec §6 Beranda, top to bottom: today's Masuk and Keluar with the
@@ -272,7 +274,8 @@ String _describeLine(TransactionLine line) {
   return unit == null ? '$name $quantity' : '$name $quantity $unit';
 }
 
-/// Bicara, Foto and Ketik open their capture screens once F6 and F3 land.
+/// Ketik opens its screen once F3 lands. The drafts Bicara and Foto return
+/// open the draft screen once F3 lands too.
 class _RecordButtons extends StatelessWidget {
   const _RecordButtons();
 
@@ -284,10 +287,10 @@ class _RecordButtons extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Row(
           children: [
-            for (final (label, icon) in const [
-              ('Bicara', Icons.mic),
-              ('Foto', Icons.photo_camera),
-              ('Ketik', Icons.keyboard),
+            for (final (label, icon, buildRoute) in [
+              ('Bicara', Icons.mic, BicaraView.route),
+              ('Foto', Icons.photo_camera, FotoView.route),
+              ('Ketik', Icons.keyboard, null),
             ])
               Expanded(
                 child: Padding(
@@ -296,7 +299,9 @@ class _RecordButtons extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(64),
                     ),
-                    onPressed: null,
+                    onPressed: buildRoute == null
+                        ? null
+                        : () => Navigator.of(context).push(buildRoute()),
                     icon: Icon(icon),
                     label: Text(label),
                   ),
