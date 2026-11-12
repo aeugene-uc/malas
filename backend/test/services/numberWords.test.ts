@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseQuantity, parseRupiah } from "../../src/services/numberWords.js";
+import { hasMoneyMarker, parseQuantity, parseRupiah } from "../../src/services/numberWords.js";
 
 test("readsSlangAmountsFromTheFixedList", () => {
   assert.equal(parseRupiah("goceng"), 5_000);
@@ -63,4 +63,13 @@ test("returnsNullForZeroOrUnknownQuantity", () => {
   assert.equal(parseQuantity("0 kg"), null);
   assert.equal(parseQuantity("banyak"), null);
   assert.equal(parseQuantity("0,0001 kg"), null);
+});
+
+test("tellsMoneyFromABareNumberByItsMarker", () => {
+  for (const text of ["25 ribu", "25rb", "15k", "1,2 juta", "Rp 12", "ceban", "25.000"]) {
+    assert.equal(hasMoneyMarker(text), true, text);
+  }
+  for (const text of ["selawe", "12", "setengah", "tiga"]) {
+    assert.equal(hasMoneyMarker(text), false, text);
+  }
 });

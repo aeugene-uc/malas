@@ -2,7 +2,9 @@
 // by the model. Values are kept in thousandths so "setengah" and "1,2 juta" stay
 // exact without floats, matching Line.quantity's Decimal(12, 3).
 
-export type Unit = "porsi" | "pcs" | "kg" | "liter" | "lembar" | "jam" | "malam" | "bulan" | "paket";
+export const UNITS = ["porsi", "pcs", "kg", "liter", "lembar", "jam", "malam", "bulan", "paket"] as const;
+
+export type Unit = (typeof UNITS)[number];
 
 export type Quantity = { quantity: string; unit: Unit | null };
 
@@ -73,6 +75,19 @@ const unitByWord: Record<string, { unit: Unit; factor: number }> = {
   bulan: { unit: "bulan", factor: 1_000 },
   paket: { unit: "paket", factor: 1_000 },
 };
+
+// True when the text carries a sign that it is money: ribu, juta, Rp, slang like
+// goceng, or digits grouped as 25.000. A bare number or number word after an item
+// ("es teh selawe") has none of these and is a quantity (spec §7.3).
+export function hasMoneyMarker(text: string): boolean {
+  return tokenize(text).some(
+    (word) =>
+      word === "rp" ||
+      Object.hasOwn(rupiahBySlang, word) ||
+      Object.hasOwn(multiplierByWord, word) ||
+      /^\d{1,3}(\.\d{3})+$/.test(word),
+  );
+}
 
 // Returns integer rupiah, or null when the text is not a clear amount, so the
 // draft highlights it instead of guessing.
