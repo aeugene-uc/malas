@@ -42,6 +42,7 @@ class Transaction {
     required this.hasRetur,
     required this.person,
     required this.lines,
+    this.dueDate,
   });
 
   factory Transaction.fromJson(Map<String, Object?> json) {
@@ -61,6 +62,7 @@ class Transaction {
         for (final lineJson in linesJson)
           TransactionLine.fromJson(lineJson as Map<String, Object?>),
       ],
+      dueDate: json['dueDate'] as String?,
     );
   }
 
@@ -79,7 +81,13 @@ class Transaction {
   final NamedRef? person;
   final List<TransactionLine> lines;
 
+  /// `YYYY-MM-DD` when a Piutang or Utang has one (§7.4).
+  final String? dueDate;
+
   bool get isFullyPaid => remaining <= 0;
+
+  /// Paid more than the total: the extra is owed back (§4.1).
+  bool get isKembalikan => remaining < 0;
 }
 
 class TransactionLine {
