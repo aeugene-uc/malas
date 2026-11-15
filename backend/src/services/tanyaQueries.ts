@@ -20,23 +20,32 @@ export class StoreQueries implements TanyaQueries {
   ) {}
 
   async totals(range: PeriodRange): Promise<Totals> {
+    const { masuk, keluar } = splitPayments(await this.paymentsIn(range));
+    return { masuk, keluar, daysRecorded: await this.daysRecorded(range) };
+  }
+
+  // Payments made in the period, with what each transaction's lines were for.
+  // Tanya's totals and Analisis's summary both add these up with splitPayments,
+  // so the two screens give the same numbers.
+  async paymentsIn(range: { from: string; to: string }): Promise<PaymentRow[]> {
     const payments = await prisma.payment.findMany({
       where: { date: { gte: toDate(range.from), lte: toDate(range.to) }, transaction: { storeId: this.storeId, deletedAt: null } },
-      select: { amount: true, transaction: { select: { direction: true, lines: { select: { category: { select: { countedInProfit: true } } } } } } },
+      select: {
+        amount: true,
+        transaction: {
+          select: { direction: true, lines: { select: { lineTotal: true, category: { select: { name: true, countedInProfit: true } } } } },
+        },
+      },
     });
-    let masuk = 0;
-    let keluar = 0;
-    for (const payment of payments) {
-      if (!isCountedInProfit(payment.transaction.lines.map((line) => line.category?.countedInProfit ?? null))) {
-        continue;
-      }
-      if (payment.transaction.direction === "IN") {
-        masuk += payment.amount;
-      } else {
-        keluar += payment.amount;
-      }
-    }
-    return { masuk, keluar, daysRecorded: await this.daysRecorded(range) };
+    return payments.map((payment) => ({
+      amount: payment.amount,
+      direction: payment.transaction.direction,
+      lines: payment.transaction.lines.map((line) => ({
+        lineTotal: line.lineTotal,
+        categoryName: line.category?.name ?? null,
+        countedInProfit: line.category?.countedInProfit ?? null,
+      })),
+    }));
   }
 
   async byItem(options: RankOptions): Promise<Ranked> {
@@ -103,7 +112,7 @@ export class StoreQueries implements TanyaQueries {
     });
   }
 
-  private async daysRecorded(range: PeriodRange): Promise<number> {
+  async daysRecorded(range: { from: string; to: string }): Promise<number> {
     const entries = await prisma.transaction.findMany({
       where: { storeId: this.storeId, deletedAt: null, businessDate: { gte: toDate(range.from), lte: toDate(range.to) } },
       select: { businessDate: true },
@@ -121,6 +130,46 @@ export class StoreQueries implements TanyaQueries {
 // not (Modal masuk, Pinjaman masuk, ...). null is a line with no category.
 export function isCountedInProfit(lineCategoryFlags: (boolean | null)[]): boolean {
   return lineCategoryFlags.length === 0 || lineCategoryFlags.some((flag) => flag !== false);
+}
+
+export type PaymentRow = {
+  amount: number;
+  direction: "IN" | "OUT";
+  lines: { lineTotal: number; categoryName: string | null; countedInProfit: boolean | null }[];
+};
+
+// Spec §7.6: money not counted in profit gets its own line, in four groups.
+// Loans and money held for others are shown net: in minus out.
+export type NotCountedInProfit = { modal: number; ambilPribadi: number; pinjaman: number; titipan: number };
+
+type NotCountedGroup = keyof NotCountedInProfit;
+const GROUP_BY_CATEGORY: Record<string, NotCountedGroup> = {
+  "Modal masuk": "modal",
+  "Ambil pribadi": "ambilPribadi",
+  "Pinjaman masuk": "pinjaman",
+  "Bayar pinjaman": "pinjaman",
+  "Uang titipan": "titipan",
+};
+
+// Adds up payments into Masuk, Keluar and the not-in-profit groups. A payment
+// not counted in profit goes to the group of its transaction's largest line.
+export function splitPayments(payments: PaymentRow[]): { masuk: number; keluar: number; notCountedInProfit: NotCountedInProfit } {
+  let masuk = 0;
+  let keluar = 0;
+  const notCountedInProfit: NotCountedInProfit = { modal: 0, ambilPribadi: 0, pinjaman: 0, titipan: 0 };
+  for (const payment of payments) {
+    if (isCountedInProfit(payment.lines.map((line) => line.countedInProfit))) {
+      if (payment.direction === "IN") masuk += payment.amount;
+      else keluar += payment.amount;
+      continue;
+    }
+    const largestLine = [...payment.lines].sort((a, b) => b.lineTotal - a.lineTotal)[0];
+    const group = GROUP_BY_CATEGORY[largestLine?.categoryName ?? ""];
+    if (group !== undefined) {
+      notCountedInProfit[group] += payment.direction === "IN" ? payment.amount : -payment.amount;
+    }
+  }
+  return { masuk, keluar, notCountedInProfit };
 }
 
 export function countDaysRecorded(businessDates: Date[], closedDays: number[]): number {
