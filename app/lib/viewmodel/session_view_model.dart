@@ -61,6 +61,12 @@ class SessionViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// "Keluar" in Settings.
+  Future<void> signOut() async {
+    await _authRepository.signOut();
+    _signOutLocally();
+  }
+
   /// Any request answered `401` lands here: the token is no longer valid.
   Future<void> handleUnauthorized() async {
     if (_stage == SessionStage.signedOut) return;

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'data/api_client.dart';
 import 'data/auth_repository.dart';
+import 'data/store_repository.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
 import 'view/first_run/session_gate.dart';
@@ -55,6 +56,7 @@ class MalasApp extends StatelessWidget {
             secureStorage: const FlutterSecureStorage(),
           ),
         ),
+        Provider(create: (_) => StoreRepository(apiClient)),
         ChangeNotifierProvider(create: _startSession),
         ChangeNotifierProvider(create: (_) => AppShellViewModel()),
       ],

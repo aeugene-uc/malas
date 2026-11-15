@@ -26,5 +26,10 @@ const List<String> _weekdayShortNames = [
 /// time zone, so it can't shift a day.
 String formatWeekdayShort(String businessDate) {
   final date = DateTime.parse(businessDate);
-  return _weekdayShortNames[date.weekday - DateTime.monday];
+  return formatIsoWeekdayShort(date.weekday);
+}
+
+/// "Sen" for 1 (Monday) to "Min" for 7, as [DateTime.weekday] numbers days.
+String formatIsoWeekdayShort(int weekday) {
+  return _weekdayShortNames[weekday - DateTime.monday];
 }
