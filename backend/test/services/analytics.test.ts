@@ -53,6 +53,8 @@ test("ranksMoneyInByItemAndMoneyOutByCategoryAndExpenseItem", () => {
     { lineTotal: 75_000, countedInProfit: true, item: { id: "item-gas", name: "Gas" }, category: { id: "cat-ops", name: "Operasional" } },
     { lineTotal: 1_000_000, countedInProfit: true, item: null, category: sewa },
     { lineTotal: 25_000, countedInProfit: null, item: null, category: null },
+    // The owner taking money out is not spending: it has its own summary line.
+    { lineTotal: 500_000, countedInProfit: false, item: null, category: { id: "cat-ambil", name: "Ambil pribadi" } },
   ];
   assert.deepEqual(rankLines(spending, "category").map((row) => [row.name, row.amount, row.share]), [
     ["Sewa", 1_000_000, 0.9091],
