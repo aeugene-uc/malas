@@ -93,6 +93,19 @@ const Map<String, Object> mockBodiesByRoute = {
       },
     ],
   },
+  // Felicia's #59 shape. Code fills each {fN} from figures.
+  'POST /ai/ask': {
+    'answer': 'Paling laku minggu ini: {f0} ({f1}) dan {f2} ({f3}).',
+    'figures': [
+      {'key': 'f0', 'label': 'Kopi susu', 'value': 42, 'unit': 'porsi'},
+      {'key': 'f1', 'label': 'Kopi susu', 'value': 630000, 'unit': 'IDR'},
+      {'key': 'f2', 'label': 'Es teh', 'value': 30, 'unit': 'gelas'},
+      {'key': 'f3', 'label': 'Es teh', 'value': 90000, 'unit': 'IDR'},
+    ],
+    'daysRecorded': 5,
+    'period': {'from': '2026-11-09', 'to': '2026-11-15'},
+    'function': 'byItem',
+  },
   'POST /auth/consent': {'consentAt': '2026-11-15T09:00:00.000Z'},
   'PATCH /stores/:id': {'store': <String, Object>{}},
   'GET /home': {
