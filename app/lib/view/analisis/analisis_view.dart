@@ -8,6 +8,7 @@ import '../../model/analytics.dart';
 import '../../viewmodel/analisis_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../format.dart';
+import 'analisis_pdf.dart';
 import 'analisis_text.dart';
 
 /// Spec §7.6: period, summary, two ranked lists, alerts and Ekspor.
@@ -40,7 +41,9 @@ class _AnalisisScreen extends StatelessWidget {
           IconButton(
             tooltip: 'Ekspor',
             icon: const Icon(Icons.ios_share),
-            onPressed: summary == null ? null : () => _shareText(context),
+            onPressed: summary == null
+                ? null
+                : () => _showExportChoices(context),
           ),
         ],
       ),
@@ -91,19 +94,63 @@ class _AnalisisScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _shareText(BuildContext context) {
+  /// Ekspor (§7.6): a WhatsApp text summary or a PDF, both through the
+  /// phone's share sheet.
+  Future<void> _showExportChoices(BuildContext context) async {
+    final chosenFormat = await showModalBottomSheet<_ExportFormat>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.chat_outlined),
+              title: const Text('Teks WhatsApp'),
+              onTap: () => Navigator.of(sheetContext).pop(_ExportFormat.text),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('PDF'),
+              onTap: () => Navigator.of(sheetContext).pop(_ExportFormat.pdf),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosenFormat == null || !context.mounted) return;
     final viewModel = context.read<AnalisisViewModel>();
     final storeName =
         context.read<SessionViewModel?>()?.account?.store.name ?? 'MALAS';
-    final text = buildWhatsAppSummary(
-      storeName: storeName,
-      range: viewModel.range,
-      summary: viewModel.summary!,
-      masukRows: viewModel.masukRows,
-    );
-    return SharePlus.instance.share(ShareParams(text: text));
+    final summary = viewModel.summary!;
+    switch (chosenFormat) {
+      case _ExportFormat.text:
+        final text = buildWhatsAppSummary(
+          storeName: storeName,
+          range: viewModel.range,
+          summary: summary,
+          masukRows: viewModel.masukRows,
+        );
+        await SharePlus.instance.share(ShareParams(text: text));
+      case _ExportFormat.pdf:
+        final pdfBytes = await buildAnalisisPdf(
+          storeName: storeName,
+          range: viewModel.range,
+          summary: summary,
+          masukRows: viewModel.masukRows,
+          keluarRows: viewModel.keluarRows,
+        );
+        final fileName = '$storeName ${formatPeriodLabel(viewModel.range)}.pdf';
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile.fromData(pdfBytes, mimeType: 'application/pdf')],
+            fileNameOverrides: [fileName],
+          ),
+        );
+    }
   }
 }
+
+enum _ExportFormat { text, pdf }
 
 class _PeriodStepper extends StatelessWidget {
   const _PeriodStepper({required this.viewModel});

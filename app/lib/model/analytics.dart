@@ -86,6 +86,7 @@ class AnalyticsSummary {
     required this.daysInPeriod,
     required this.piutangAtEnd,
     required this.utangAtEnd,
+    required this.editedEntryCount,
   });
 
   factory AnalyticsSummary.fromJson(Map<String, Object?> json) {
@@ -101,6 +102,7 @@ class AnalyticsSummary {
       daysInPeriod: json['daysInPeriod'] as int,
       piutangAtEnd: json['piutangAtEnd'] as int,
       utangAtEnd: json['utangAtEnd'] as int,
+      editedEntryCount: json['editedEntryCount'] as int? ?? 0,
     );
   }
 
@@ -115,6 +117,10 @@ class AnalyticsSummary {
   final int daysInPeriod;
   final int piutangAtEnd;
   final int utangAtEnd;
+
+  /// Entries changed after they were saved. The PDF states it (§15), so a
+  /// report someone else reads shows how much was corrected.
+  final int editedEntryCount;
 }
 
 /// Money that moved but is not income or cost (§4.2, §7.6), each on its own

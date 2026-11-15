@@ -68,6 +68,7 @@ const Map<String, Object> mockBodiesByRoute = {
     'daysInPeriod': 15,
     'piutangAtEnd': 240000,
     'utangAtEnd': 1200000,
+    'editedEntryCount': 2,
   },
   'GET /analytics/by-item': {
     'rows': [

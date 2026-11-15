@@ -40,6 +40,11 @@ dependencies:
   flutter_local_notifications: 21.0.0
   timezone: ^0.11.2
   share_plus: ^13.3.1
+  pdf: 3.12.0
+  # Only to hold pdf's image dependency below 4.6: newer image needs an
+  # archive newer than pdf 3.12 allows, and pdf can't go past 3.12 while
+  # flutter_local_notifications 21 pins xml 6.
+  image: ">=4.0.0 <4.6.0"
 
 dev_dependencies:
   flutter_test:
