@@ -32,6 +32,18 @@ void main() {
     expect(adapter.lastRequest!.headers['Idempotency-Key'], 'key-1');
   });
 
+  test('tellsTheAppWhenTheServerRejectsTheToken', () async {
+    adapter.reply(401, {
+      'error': {'code': 'UNAUTHORIZED', 'message': 'Silakan masuk lagi'},
+    });
+    var unauthorizedCount = 0;
+    apiClient.onUnauthorized = () => unauthorizedCount++;
+
+    await expectLater(apiClient.get('/home'), throwsA(isA<ApiException>()));
+
+    expect(unauthorizedCount, 1);
+  });
+
   test('turnsBackendErrorBodyIntoApiException', () async {
     adapter.reply(400, {
       'error': {

@@ -3,25 +3,32 @@
 /// `/ai/read`). Add a route here when a screen needs one before the backend
 /// has it, and delete it once the real route works.
 const Map<String, Object> mockBodiesByRoute = {
-  'GET /auth/me': {
+  'GET /auth/me': _setUpAccount,
+  'POST /auth/login': {'token': 'mock-token', ..._setUpAccount},
+  // A new owner: no store name, no jenis usaha and no consent yet, so the
+  // app opens first-run setup.
+  'POST /auth/register': {
+    'token': 'mock-token',
     'user': {
-      'id': 'user-1',
-      'name': 'Bu Sari',
-      'phone': '081234567890',
-      'consentAt': '2026-11-11T02:00:00.000Z',
+      'id': 'user-2',
+      'name': 'Pak Budi',
+      'phone': '+6281298765432',
+      'consentAt': null,
     },
     'stores': [
       {
-        'id': 'store-1',
-        'name': 'Warung Bu Sari',
-        'businessTypes': ['MAKANAN_MINUMAN'],
+        'id': 'store-2',
+        'name': '',
+        'businessTypes': <Object>[],
         'timezone': 'Asia/Jakarta',
         'dayChangeHour': 4,
         'plan': 'GRATIS',
-        'trialEndsAt': '2026-11-25T00:00:00.000Z',
+        'trialEndsAt': '2026-11-29T00:00:00.000Z',
       },
     ],
   },
+  'POST /auth/consent': {'consentAt': '2026-11-15T09:00:00.000Z'},
+  'PATCH /stores/:id': {'store': <String, Object>{}},
   'GET /home': {
     'today': {'date': '2026-11-11', 'masuk': 420000, 'keluar': 150000},
     'comparisons': [
@@ -188,4 +195,24 @@ const Map<String, Object> mockBodiesByRoute = {
     },
     'warnings': <Object>[],
   },
+};
+
+const Map<String, Object> _setUpAccount = {
+  'user': {
+    'id': 'user-1',
+    'name': 'Bu Sari',
+    'phone': '+6281234567890',
+    'consentAt': '2026-11-11T02:00:00.000Z',
+  },
+  'stores': [
+    {
+      'id': 'store-1',
+      'name': 'Warung Bu Sari',
+      'businessTypes': ['MAKANAN_MINUMAN'],
+      'timezone': 'Asia/Jakarta',
+      'dayChangeHour': 4,
+      'plan': 'GRATIS',
+      'trialEndsAt': '2026-11-25T00:00:00.000Z',
+    },
+  ],
 };

@@ -8,6 +8,9 @@ class ApiClient {
   final Dio _dio;
   String? _token;
 
+  /// Called on any `401`, so the app can send the owner back to sign-in.
+  void Function()? onUnauthorized;
+
   /// Set after sign-in. Every later request carries it as a bearer token.
   set token(String? token) => _token = token;
 
@@ -54,7 +57,9 @@ class ApiClient {
       );
       return response.data;
     } on DioException catch (error) {
-      throw ApiException.fromDioException(error);
+      final apiException = ApiException.fromDioException(error);
+      if (apiException.statusCode == 401) onUnauthorized?.call();
+      throw apiException;
     }
   }
 }
