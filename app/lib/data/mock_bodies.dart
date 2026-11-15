@@ -219,7 +219,6 @@ final Map<String, Object> mockBodiesByRoute = {
     ],
     'nextCursor': null,
   },
-  'DELETE /transactions/:id': <String, Object>{},
   'POST /transactions/:id/restore': <String, Object>{},
   'POST /transactions/:id/payments': {
     'payment': {'id': 'pay-new', 'date': '2026-11-15', 'amount': 10000},
