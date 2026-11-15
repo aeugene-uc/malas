@@ -72,16 +72,52 @@ final Map<String, Object> mockBodiesByRoute = {
   },
   'GET /analytics/by-item': {
     'rows': [
-      {'id': 'item-1', 'name': 'Nasi goreng', 'amount': 4500000, 'share': 0.52},
-      {'id': 'item-2', 'name': 'Es teh', 'amount': 1800000, 'share': 0.21},
-      {'id': 'item-4', 'name': 'Mie goreng', 'amount': 1340000, 'share': 0.16},
+      {
+        'id': 'item-1',
+        'name': 'Nasi goreng',
+        'kind': 'item',
+        'amount': 4500000,
+        'share': 0.52,
+      },
+      {
+        'id': 'item-2',
+        'name': 'Es teh',
+        'kind': 'item',
+        'amount': 1800000,
+        'share': 0.21,
+      },
+      {
+        'id': 'item-4',
+        'name': 'Mie goreng',
+        'kind': 'item',
+        'amount': 1340000,
+        'share': 0.16,
+      },
     ],
   },
   'GET /analytics/by-category': {
     'rows': [
-      {'id': 'cat-bahan', 'name': 'Bahan', 'amount': 3100000, 'share': 0.6},
-      {'id': 'item-3', 'name': 'Gas', 'amount': 750000, 'share': 0.14},
-      {'id': 'cat-sewa', 'name': 'Sewa', 'amount': 1000000, 'share': 0.19},
+      {
+        'id': 'cat-bahan',
+        'name': 'Bahan',
+        'kind': 'category',
+        'amount': 3100000,
+        'share': 0.6,
+      },
+      {
+        'id': 'item-3',
+        'name': 'Gas',
+        'kind': 'item',
+        'amount': 750000,
+        'share': 0.14,
+      },
+      {
+        'id': 'cat-sewa',
+        'name': 'Sewa',
+        'kind': 'category',
+        'amount': 1000000,
+        'share': 0.19,
+      },
     ],
   },
   'GET /alerts': {
