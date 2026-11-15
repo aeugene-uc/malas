@@ -92,11 +92,12 @@ class _Controls extends StatelessWidget {
     );
   }
 
+  /// These controls are swapped for the reading indicator while the read
+  /// runs, so the navigator is taken before waiting, not from this context.
   Future<void> _readAndClose(BuildContext context) async {
+    final navigator = Navigator.of(context);
     final readResult = await viewModel.read();
-    if (readResult != null && context.mounted) {
-      Navigator.of(context).pop(readResult);
-    }
+    if (readResult != null && navigator.mounted) navigator.pop(readResult);
   }
 }
 
