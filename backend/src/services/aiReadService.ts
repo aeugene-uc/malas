@@ -5,8 +5,8 @@ import { prisma } from "../db.js";
 import { ApiError } from "../errors.js";
 import { buildWarning } from "../warnings.js";
 import { readPhoto, readVoiceTranscript } from "./aiRead.js";
-import { hasReadsLeft } from "./aiQuota.js";
-import { localYearMonth, resolveBusinessDate } from "./businessDate.js";
+import { hasReadsLeft, isNewMonth } from "./aiQuota.js";
+import { resolveBusinessDate } from "./businessDate.js";
 import { savedItemKey, type Draft, type DraftWarning, type SavedItem, type SavedRecords } from "./draftBuilder.js";
 import { normaliseName } from "./normaliseName.js";
 import { UNITS } from "./numberWords.js";
@@ -61,10 +61,9 @@ export async function readForStore(storeId: string, request: ReadRequest): Promi
 // calendar; otherwise it goes up by one in the database, so two reads at once
 // both count.
 async function countRead(store: Store, now: Date): Promise<void> {
-  const isNewMonth = store.aiReadsResetAt === null || localYearMonth(store.aiReadsResetAt, store.timezone) !== localYearMonth(now, store.timezone);
   await prisma.store.update({
     where: { id: store.id },
-    data: isNewMonth ? { aiReadsThisMonth: 1, aiReadsResetAt: now } : { aiReadsThisMonth: { increment: 1 } },
+    data: isNewMonth(store.aiReadsResetAt, store.timezone, now) ? { aiReadsThisMonth: 1, aiReadsResetAt: now } : { aiReadsThisMonth: { increment: 1 } },
   });
 }
 

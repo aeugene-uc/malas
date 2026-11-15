@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hasReadsLeft, readLimit, readsUsedThisMonth, type QuotaStore } from "../../src/services/aiQuota.js";
+import {
+  hasQuestionsLeft,
+  hasReadsLeft,
+  isTanyaAvailable,
+  readLimit,
+  readsUsedThisMonth,
+  type QuestionStore,
+  type QuotaStore,
+} from "../../src/services/aiQuota.js";
 
 const now = new Date("2026-11-20T05:00:00Z");
 
@@ -38,4 +46,29 @@ test("startsAgainFromZeroInANewMonthOfTheStoresCalendar", () => {
   const countedOn31OctUtc = store({ aiReadsThisMonth: 5, aiReadsResetAt: new Date("2026-10-31T18:00:00Z") });
   assert.equal(readsUsedThisMonth(countedOn31OctUtc, now), 5);
   assert.equal(readsUsedThisMonth(store({ aiReadsThisMonth: 3, aiReadsResetAt: null }), now), 0);
+});
+
+function questionStore(overrides: Partial<QuestionStore>): QuestionStore {
+  return {
+    plan: "PRO",
+    trialEndsAt: new Date("2026-11-10T00:00:00Z"),
+    timezone: "Asia/Jakarta",
+    questionsThisMonth: 0,
+    questionsResetAt: new Date("2026-11-01T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+test("keepsTanyaOffGratisButOpenDuringTheTrial", () => {
+  assert.equal(isTanyaAvailable(questionStore({ plan: "GRATIS" }), now), false);
+  assert.equal(isTanyaAvailable(questionStore({ plan: "GRATIS", trialEndsAt: new Date("2026-11-25T00:00:00Z") }), now), true);
+  assert.equal(isTanyaAvailable(questionStore({ plan: "PRO" }), now), true);
+});
+
+test("allowsThreeHundredQuestionsOnProAndAThousandOnProPlus", () => {
+  assert.equal(hasQuestionsLeft(questionStore({ questionsThisMonth: 299 }), now), true);
+  assert.equal(hasQuestionsLeft(questionStore({ questionsThisMonth: 300 }), now), false);
+  assert.equal(hasQuestionsLeft(questionStore({ plan: "PRO_PLUS", questionsThisMonth: 999 }), now), true);
+  assert.equal(hasQuestionsLeft(questionStore({ plan: "PRO_PLUS", questionsThisMonth: 1000 }), now), false);
+  assert.equal(hasQuestionsLeft(questionStore({ questionsThisMonth: 300, questionsResetAt: new Date("2026-10-20T00:00:00Z") }), now), true);
 });
