@@ -1,18 +1,30 @@
 import type { HeardLine, PaymentLabel } from "../ai/readPrompt.js";
 import { buildWarning, type Warning } from "../warnings.js";
+import { normaliseName } from "./normaliseName.js";
 import { UNITS, hasMoneyMarker, parseQuantity, parseRupiah, type Unit } from "./numberWords.js";
 
-// Spec §9: code converts the numbers the model heard, groups lines into
-// transactions and computes the totals. Matching names to items and filling
-// saved prices need the database and come after this step, so a line whose price
-// is unknown keeps `lineTotal: null`.
+// Spec §9: code converts the numbers the model heard, matches names to the
+// store's saved items and people, fills saved prices, groups lines into
+// transactions and computes the totals. A line whose price is still unknown
+// keeps `lineTotal: null`.
 
 export type InputSource = "VOICE" | "PHOTO" | "NOTEBOOK";
 
+// What the store already has, keyed with savedItemKey and normaliseName. Spec
+// §7.3: a known name is matched silently and code fills its price.
+export type SavedItem = { id: string; categoryId: string | null; unit: Unit | null; savedPrice: number | null };
+export type SavedRecords = { itemsByKey: Map<string, SavedItem>; personIdsByName: Map<string, string> };
+
+// A sold item and a bought item can share a name ("gula" sold and bought), so
+// the direction is part of the key.
+export function savedItemKey(direction: "IN" | "OUT", name: string): string {
+  return `${direction}|${normaliseName(name)}`;
+}
+
 export type DraftLine = {
-  itemId: null;
+  itemId: string | null;
   itemName: string | null;
-  categoryId: null;
+  categoryId: string | null;
   // The model's guess. The server picks the real category from the fixed list.
   categoryHint: string | null;
   quantity: string | null;
@@ -29,7 +41,7 @@ export type Draft = {
   businessDate?: string;
   direction: "IN" | "OUT";
   total: number;
-  personId: null;
+  personId: string | null;
   personName: string | null;
   dueDate: string | null;
   source: InputSource;
@@ -54,12 +66,15 @@ type BuildOptions = {
   // The store's business date today, from its timezone and day-change hour.
   todayBusinessDate: string;
   document?: PrintedDocument;
+  saved?: SavedRecords;
 };
 
 const LOW_CONFIDENCE = 0.6;
+const NOTHING_SAVED: SavedRecords = { itemsByKey: new Map(), personIdsByName: new Map() };
 
 export function buildDrafts(options: BuildOptions): BuiltDrafts {
   const { source, inputId, todayBusinessDate, document } = options;
+  const saved = options.saved ?? NOTHING_SAVED;
   const isPrinted = source !== "VOICE";
   const heardLines = options.heardLines.map((heard) => ({ ...heard, person: heard.person ?? document?.seller ?? null }));
   const drafts: Draft[] = [];
@@ -71,11 +86,11 @@ export function buildDrafts(options: BuildOptions): BuiltDrafts {
     const key = groupKey(heard);
     let draftIndex = draftIndexByKey.get(key);
     if (draftIndex === undefined) {
-      draftIndex = drafts.push(startDraft(heard, { source, inputId, todayBusinessDate, documentDate })) - 1;
+      draftIndex = drafts.push(startDraft(heard, { source, inputId, todayBusinessDate, documentDate, saved })) - 1;
       draftIndexByKey.set(key, draftIndex);
     }
     const draft = drafts[draftIndex] as Draft;
-    const { line, unclearFields } = buildLine(heard, isPrinted);
+    const { line, unclearFields } = buildLine(heard, { isPrinted, saved });
     draft.lines.push(line);
     if (unclearFields.length > 0 || heard.confidence < LOW_CONFIDENCE) {
       warnings.push({ ...buildWarning("UNCLEAR_READ"), draftIndex, lineIndex: draft.lines.length - 1 });
@@ -130,13 +145,13 @@ function groupKey(heard: HeardLine): string {
 
 function startDraft(
   heard: HeardLine,
-  context: { source: InputSource; inputId: string | null; todayBusinessDate: string; documentDate: string | null },
+  context: { source: InputSource; inputId: string | null; todayBusinessDate: string; documentDate: string | null; saved: SavedRecords },
 ): Draft {
   const businessDate = context.documentDate ?? addDays(context.todayBusinessDate, heard.dateOffset);
   const draft: Draft = {
     direction: heard.direction,
     total: 0,
-    personId: null,
+    personId: heard.person === null ? null : (context.saved.personIdsByName.get(normaliseName(heard.person)) ?? null),
     personName: heard.person,
     // "Tempo seminggu" counts from the day of the sale, not from today.
     dueDate: heard.dueInDays === null ? null : addDays(businessDate, heard.dueInDays),
@@ -154,28 +169,33 @@ function startDraft(
 
 // A field the model gave but code could not turn into a number is unclear: it
 // stays null and the line is flagged, never guessed (spec §7.3).
-function buildLine(heard: HeardLine, isPrinted: boolean): { line: DraftLine; unclearFields: string[] } {
+function buildLine(heard: HeardLine, context: { isPrinted: boolean; saved: SavedRecords }): { line: DraftLine; unclearFields: string[] } {
+  const { isPrinted, saved } = context;
   const unclearFields: string[] = [];
   const { quantityText, amountText } = isPrinted ? heard : moveBareNumberToQuantity(heard);
 
   const quantity = convert(quantityText, parseQuantity, "quantity", unclearFields);
-  const unitPrice = convert(heard.unitPriceText, parseRupiah, "unitPrice", unclearFields);
+  const heardUnitPrice = convert(heard.unitPriceText, parseRupiah, "unitPrice", unclearFields);
   const amount = convert(amountText, parseRupiah, "amount", unclearFields);
+  const savedItem = heard.name === null ? undefined : saved.itemsByKey.get(savedItemKey(heard.direction, heard.name));
+  // Spec §7.3: code fills prices from saved items when none was said.
+  const unitPrice = heardUnitPrice ?? savedItem?.savedPrice ?? null;
 
   const line: DraftLine = {
-    itemId: null,
+    itemId: savedItem?.id ?? null,
     itemName: heard.name,
-    categoryId: null,
+    categoryId: savedItem?.categoryId ?? null,
     categoryHint: heard.category,
     quantity: quantity?.quantity ?? null,
-    unit: quantity?.unit ?? readUnit(heard.unit),
+    unit: quantity?.unit ?? readUnit(heard.unit) ?? savedItem?.unit ?? null,
     unitPrice,
     lineTotal: computeLineTotal({ amount, quantity: quantity?.quantity ?? null, unitPrice }),
   };
   // A spoken total that differs from quantity x price is a discount the owner
   // meant ("nasi 2, 25 ribu aja"). On a printed line all three are written
-  // down, so a gap means one digit was misread (spec §9).
-  const quantityTimesPrice = computeLineTotal({ amount: null, quantity: line.quantity, unitPrice });
+  // down, so a gap means one digit was misread (spec §9). A saved price is not
+  // written on the page, so it is left out of this check.
+  const quantityTimesPrice = computeLineTotal({ amount: null, quantity: line.quantity, unitPrice: heardUnitPrice });
   if (isPrinted && amount !== null && quantityTimesPrice !== null && amount !== quantityTimesPrice) {
     unclearFields.push("lineTotal");
   }

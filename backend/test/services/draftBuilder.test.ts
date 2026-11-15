@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { HeardLine } from "../../src/ai/readPrompt.js";
-import { buildDrafts, type PrintedDocument } from "../../src/services/draftBuilder.js";
+import { buildDrafts, savedItemKey, type PrintedDocument, type SavedRecords } from "../../src/services/draftBuilder.js";
 
 const today = "2026-11-12";
 
@@ -181,4 +181,58 @@ test("ignoresAndFlagsADocumentDateInTheFutureOrNotARealDay", () => {
 test("flagsAPrintedTotalItCouldNotReadAndKeepsTheSumOfTheLines", () => {
   const { drafts, warnings } = buildPrinted([heard({ direction: "OUT", name: "gula", amountText: "30000" })], { seller: null, date: null, totalText: "lunas" });
   assert.deepEqual([drafts[0]?.total, warnings.length], [30_000, 1]);
+});
+
+const savedRecords: SavedRecords = {
+  itemsByKey: new Map([
+    [savedItemKey("IN", "Nasi Goreng"), { id: "item-nasi", categoryId: "cat-jual", unit: "porsi" as const, savedPrice: 15_000 }],
+    [savedItemKey("OUT", "gula"), { id: "item-gula", categoryId: "cat-bahan", unit: "kg" as const, savedPrice: 16_000 }],
+  ]),
+  personIdsByName: new Map([["pak budi", "person-budi"]]),
+};
+
+function buildWithSaved(heardLines: HeardLine[]) {
+  return buildDrafts({ heardLines, source: "VOICE", inputId: "input-1", todayBusinessDate: today, saved: savedRecords });
+}
+
+test("matchesASpokenNameToTheSavedItemAndFillsItsPrice", () => {
+  const draft = buildWithSaved([heard({ name: "nasi  goreng", quantityText: "12" })]).drafts[0];
+  const line = draft?.lines[0];
+  assert.deepEqual([line?.itemId, line?.categoryId, line?.unit, line?.unitPrice, line?.lineTotal], ["item-nasi", "cat-jual", "porsi", 15_000, 180_000]);
+  assert.deepEqual([draft?.total, draft?.payments[0]?.amount], [180_000, 180_000]);
+});
+
+test("keepsASpokenPriceAndASpokenTotalOverTheSavedPrice", () => {
+  const [spokenPrice, spokenTotal] = buildWithSaved([
+    heard({ name: "nasi goreng", quantityText: "2", unitPriceText: "14 ribu" }),
+    heard({ name: "nasi goreng", quantityText: "2", amountText: "25 ribu", person: "Pak Budi" }),
+  ]).drafts;
+  assert.deepEqual([spokenPrice?.lines[0]?.unitPrice, spokenPrice?.lines[0]?.lineTotal], [14_000, 28_000]);
+  assert.deepEqual([spokenTotal?.lines[0]?.unitPrice, spokenTotal?.lines[0]?.lineTotal], [15_000, 25_000]);
+});
+
+test("matchesItemsOnlyInTheirOwnDirectionAndLeavesUnknownNamesNew", () => {
+  const { drafts } = buildWithSaved([heard({ name: "gula", quantityText: "1" }), heard({ direction: "OUT", name: "kopi bubuk", amountText: "50 ribu" })]);
+  assert.deepEqual([drafts[0]?.lines[0]?.itemId, drafts[0]?.lines[0]?.lineTotal], [null, null]);
+  assert.deepEqual([drafts[1]?.lines[0]?.itemId, drafts[1]?.lines[0]?.itemName], [null, "kopi bubuk"]);
+});
+
+test("matchesASpokenPersonToTheSavedPerson", () => {
+  const [known, unknown] = buildWithSaved([
+    heard({ person: "pak  Budi", amountText: "30 ribu", paidText: "0" }),
+    heard({ person: "Bu Ani", amountText: "20 ribu", paidText: "0" }),
+  ]).drafts;
+  assert.deepEqual([known?.personId, known?.personName], ["person-budi", "pak  Budi"]);
+  assert.deepEqual([unknown?.personId, unknown?.personName], [null, "Bu Ani"]);
+});
+
+test("doesNotFlagAPrintedLineForDifferingFromTheSavedPrice", () => {
+  const { warnings } = buildDrafts({
+    heardLines: [heard({ direction: "OUT", name: "gula", quantityText: "2", amountText: "30000" })],
+    source: "PHOTO",
+    inputId: "input-2",
+    todayBusinessDate: today,
+    saved: savedRecords,
+  });
+  assert.deepEqual(warnings, []);
 });
