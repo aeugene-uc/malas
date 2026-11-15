@@ -1,3 +1,5 @@
+import '../model/transaction.dart';
+
 /// Money as spec §5.8 shows it: `Rp 12.500`, a dot between thousands.
 String formatRupiah(int amount) {
   final digits = amount.abs().toString();
@@ -32,4 +34,25 @@ String formatWeekdayShort(String businessDate) {
 /// "Sen" for 1 (Monday) to "Min" for 7, as [DateTime.weekday] numbers days.
 String formatIsoWeekdayShort(int weekday) {
   return _weekdayShortNames[weekday - DateTime.monday];
+}
+
+/// "Nasi goreng 2 porsi, Es teh 4 gelas", with the person first when there
+/// is one. Beranda, Catatan and Piutang/Utang all describe entries this way.
+String describeEntry(Transaction entry) {
+  final lineDescriptions = entry.lines.map(describeLine).join(', ');
+  final person = entry.person;
+  if (person == null) return lineDescriptions;
+  return lineDescriptions.isEmpty
+      ? person.name
+      : '${person.name} · $lineDescriptions';
+}
+
+/// "Nasi goreng 2 porsi". A bare amount is named by its category.
+String describeLine(TransactionLine line) {
+  // A bare amount has no item, so its category is the only name it has.
+  final name = line.item?.name ?? line.category?.name ?? '';
+  final quantity = line.quantity;
+  if (quantity == null) return name;
+  final unit = line.unit;
+  return unit == null ? '$name $quantity' : '$name $quantity $unit';
 }

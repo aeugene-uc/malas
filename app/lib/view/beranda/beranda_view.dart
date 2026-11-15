@@ -255,25 +255,6 @@ class _EntryTile extends StatelessWidget {
 
 /// What the owner sees for an entry (spec §5.3: name, quantity, total):
 /// "Pak Budi · Nasi goreng 2 porsi, Es teh 4 gelas".
-@visibleForTesting
-String describeEntry(Transaction entry) {
-  final lineDescriptions = entry.lines.map(_describeLine).join(', ');
-  final person = entry.person;
-  if (person == null) return lineDescriptions;
-  return lineDescriptions.isEmpty
-      ? person.name
-      : '${person.name} · $lineDescriptions';
-}
-
-String _describeLine(TransactionLine line) {
-  // A bare amount has no item, so its category is the only name it has.
-  final name = line.item?.name ?? line.category?.name ?? '';
-  final quantity = line.quantity;
-  if (quantity == null) return name;
-  final unit = line.unit;
-  return unit == null ? '$name $quantity' : '$name $quantity $unit';
-}
-
 /// Bicara, Foto and Ketik open their capture screens once F6 and F3 land.
 class _RecordButtons extends StatelessWidget {
   const _RecordButtons();

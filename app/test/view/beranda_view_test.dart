@@ -6,6 +6,7 @@ import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/model/transaction.dart';
 import 'package:malas/view/beranda/beranda_view.dart';
+import 'package:malas/view/format.dart';
 import 'package:provider/provider.dart';
 
 void main() {
