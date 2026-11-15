@@ -6,7 +6,9 @@ import '../../data/home_repository.dart';
 import '../../model/home.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/beranda_view_model.dart';
+import '../../viewmodel/session_view_model.dart';
 import '../format.dart';
+import '../settings/settings_view.dart';
 
 /// Spec §6 Beranda, top to bottom: today's Masuk and Keluar with the
 /// comparisons, the cards that have something, today's entries, and the
@@ -33,7 +35,7 @@ class _BerandaScreen extends StatelessWidget {
     final viewModel = context.watch<BerandaViewModel>();
     final home = viewModel.home;
     return Scaffold(
-      appBar: AppBar(title: const Text('Beranda')),
+      appBar: AppBar(title: const _StoreNameTitle()),
       body: Column(
         children: [
           Expanded(
@@ -304,6 +306,30 @@ class _RecordButtons extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The business name opens Settings (§6). Without a session, as in a test
+/// that shows Beranda alone, it reads "Beranda".
+class _StoreNameTitle extends StatelessWidget {
+  const _StoreNameTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    final account = context.watch<SessionViewModel?>()?.account;
+    if (account == null) return const Text('Beranda');
+    return InkWell(
+      onTap: () => Navigator.of(context).push(SettingsView.route(account)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(account.store.name, overflow: TextOverflow.ellipsis),
+          ),
+          const Icon(Icons.expand_more),
+        ],
       ),
     );
   }
