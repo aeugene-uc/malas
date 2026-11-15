@@ -11,6 +11,8 @@ void main() {
     expect(account.user.phone, '+6281234567890');
     expect(account.store.businessTypes, {BusinessType.makananMinuman});
     expect(account.store.plan, Plan.gratis);
+    expect(account.store.closedDays, {DateTime.sunday});
+    expect(account.store.reminderTime, '20:00');
     expect(account.isSetUp, isTrue);
   });
 

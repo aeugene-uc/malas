@@ -27,6 +27,40 @@ const Map<String, Object> mockBodiesByRoute = {
       },
     ],
   },
+  'GET /items': {
+    'items': [
+      {
+        'id': 'item-1',
+        'name': 'Nasi goreng',
+        'kind': 'SOLD',
+        'unit': 'porsi',
+        'savedPrice': 15000,
+      },
+      {
+        'id': 'item-2',
+        'name': 'Es teh',
+        'kind': 'SOLD',
+        'unit': null,
+        'savedPrice': 3000,
+      },
+      {
+        'id': 'item-3',
+        'name': 'Gas',
+        'kind': 'BOUGHT',
+        'unit': null,
+        'savedPrice': null,
+      },
+    ],
+  },
+  'PATCH /items/:id': {
+    'item': {
+      'id': 'item-2',
+      'name': 'Es teh manis',
+      'kind': 'SOLD',
+      'unit': 'pcs',
+      'savedPrice': 4000,
+    },
+  },
   'POST /auth/consent': {'consentAt': '2026-11-15T09:00:00.000Z'},
   'PATCH /stores/:id': {'store': <String, Object>{}},
   'GET /home': {
@@ -209,8 +243,11 @@ const Map<String, Object> _setUpAccount = {
       'id': 'store-1',
       'name': 'Warung Bu Sari',
       'businessTypes': ['MAKANAN_MINUMAN'],
+      'closedDays': [7],
       'timezone': 'Asia/Jakarta',
       'dayChangeHour': 4,
+      'reminderTime': '20:00',
+      'alertsOn': true,
       'plan': 'GRATIS',
       'trialEndsAt': '2026-11-25T00:00:00.000Z',
     },

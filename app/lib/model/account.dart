@@ -57,10 +57,16 @@ class Store {
     required this.businessTypes,
     required this.plan,
     required this.trialEndsAt,
+    this.closedDays = const {},
+    this.dayChangeHour = 4,
+    this.reminderTime,
+    this.timezone = 'Asia/Jakarta',
+    this.isAlertsOn = true,
   });
 
   factory Store.fromJson(Map<String, Object?> json) {
     final businessTypesJson = json['businessTypes'] as List<Object?>;
+    final closedDaysJson = json['closedDays'] as List<Object?>? ?? const [];
     final trialEndsAt = json['trialEndsAt'] as String?;
     return Store(
       id: json['id'] as String,
@@ -71,6 +77,11 @@ class Store {
       },
       plan: Plan.fromWire(json['plan'] as String),
       trialEndsAt: trialEndsAt == null ? null : DateTime.parse(trialEndsAt),
+      closedDays: {for (final weekday in closedDaysJson) weekday as int},
+      dayChangeHour: json['dayChangeHour'] as int? ?? 4,
+      reminderTime: json['reminderTime'] as String?,
+      timezone: json['timezone'] as String? ?? 'Asia/Jakarta',
+      isAlertsOn: json['alertsOn'] as bool? ?? true,
     );
   }
 
@@ -79,6 +90,20 @@ class Store {
   final Set<BusinessType> businessTypes;
   final Plan plan;
   final DateTime? trialEndsAt;
+
+  /// ISO weekdays, as [DateTime.weekday] numbers them: 1 is Monday. A closed
+  /// day is never "Belum dicatat" and gets no evening reminder (§7.5, §7.7).
+  final Set<int> closedDays;
+
+  /// The business day starts at this hour, so night sales stay on one date.
+  final int dayChangeHour;
+
+  /// `"HH:mm"` in the store's [timezone], or null for no evening reminder.
+  final String? reminderTime;
+
+  /// An IANA name such as `Asia/Jakarta`.
+  final String timezone;
+  final bool isAlertsOn;
 
   /// The trial sheet shows on the first open after day 14 (§8.11), and only
   /// to a store that has not chosen a paid plan.
