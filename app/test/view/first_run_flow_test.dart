@@ -11,7 +11,12 @@ import 'package:malas/view/first_run/trial_sheet.dart';
 void main() {
   testWidgets('daftarThenFirstRunSetupOpensBeranda', (tester) async {
     FlutterSecureStorage.setMockInitialValues({});
-    await tester.pumpWidget(MalasApp(apiClient: buildApiClient(baseUrl: '')));
+    await tester.pumpWidget(
+      MalasApp(
+        apiClient: buildApiClient(baseUrl: ''),
+        scheduleReminder: (_) async {},
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(SignInView), findsOneWidget);
 
@@ -36,7 +41,12 @@ void main() {
 
   testWidgets('masukWithASetUpStoreOpensBeranda', (tester) async {
     FlutterSecureStorage.setMockInitialValues({});
-    await tester.pumpWidget(MalasApp(apiClient: buildApiClient(baseUrl: '')));
+    await tester.pumpWidget(
+      MalasApp(
+        apiClient: buildApiClient(baseUrl: ''),
+        scheduleReminder: (_) async {},
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(_field('Nomor HP'), '081234567890');

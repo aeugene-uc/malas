@@ -10,9 +10,16 @@ enum SessionStage { loading, failed, signedOut, firstRun, ready }
 /// Decides between sign-in, first-run setup and the four tabs (§8.1), and
 /// whether the trial sheet is due (§8.11).
 class SessionViewModel extends ChangeNotifier {
-  SessionViewModel({required this._authRepository, required this._now});
+  SessionViewModel({
+    required this._authRepository,
+    required this._now,
+    required this._scheduleReminder,
+  });
 
   final AuthRepository _authRepository;
+
+  /// Sets the phone's evening reminder from a store, or clears it for null.
+  final Future<void> Function(Store? store) _scheduleReminder;
 
   /// The phone clock, used only to tell whether the trial has ended.
   final DateTime Function() _now;
@@ -34,14 +41,14 @@ class SessionViewModel extends ChangeNotifier {
     try {
       final account = await _authRepository.restoreSession();
       if (account == null) {
-        _signOutLocally();
+        await _signOutLocally();
       } else {
         await enter(account);
       }
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
         await _authRepository.signOut();
-        _signOutLocally();
+        await _signOutLocally();
       } else {
         _errorMessage = error.message;
         _stage = SessionStage.failed;
@@ -59,19 +66,20 @@ class SessionViewModel extends ChangeNotifier {
         account.store.isTrialOverAt(_now()) &&
         !await _authRepository.hasSeenTrialSheet();
     notifyListeners();
+    if (account.isSetUp) await _scheduleReminder(account.store);
   }
 
   /// "Keluar" in Settings.
   Future<void> signOut() async {
     await _authRepository.signOut();
-    _signOutLocally();
+    await _signOutLocally();
   }
 
   /// Any request answered `401` lands here: the token is no longer valid.
   Future<void> handleUnauthorized() async {
     if (_stage == SessionStage.signedOut) return;
     await _authRepository.signOut();
-    _signOutLocally();
+    await _signOutLocally();
   }
 
   /// "Pilih Pro" or "Lanjut Gratis". The December test has no Play Billing
@@ -86,9 +94,10 @@ class SessionViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _signOutLocally() {
+  Future<void> _signOutLocally() async {
     _account = null;
     _stage = SessionStage.signedOut;
     notifyListeners();
+    await _scheduleReminder(null);
   }
 }

@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 
 import 'data/api_client.dart';
 import 'data/auth_repository.dart';
+import 'data/reminder_scheduler.dart';
 import 'data/store_repository.dart';
+import 'model/account.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
 import 'view/first_run/session_gate.dart';
@@ -41,9 +43,16 @@ ApiClient buildApiClient({required String baseUrl}) {
 }
 
 class MalasApp extends StatelessWidget {
-  const MalasApp({super.key, required this.apiClient});
+  const MalasApp({
+    super.key,
+    required this.apiClient,
+    this.scheduleReminder = scheduleReminderOnPhone,
+  });
 
   final ApiClient apiClient;
+
+  /// Widget tests pass a stand-in, since they have no notification plugin.
+  final Future<void> Function(Store? store) scheduleReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +66,9 @@ class MalasApp extends StatelessWidget {
           ),
         ),
         Provider(create: (_) => StoreRepository(apiClient)),
-        ChangeNotifierProvider(create: _startSession),
+        ChangeNotifierProvider(
+          create: (context) => _startSession(context, scheduleReminder),
+        ),
         ChangeNotifierProvider(create: (_) => AppShellViewModel()),
       ],
       child: MaterialApp(
@@ -71,10 +82,14 @@ class MalasApp extends StatelessWidget {
   }
 }
 
-SessionViewModel _startSession(BuildContext context) {
+SessionViewModel _startSession(
+  BuildContext context,
+  Future<void> Function(Store? store) scheduleReminder,
+) {
   final session = SessionViewModel(
     authRepository: context.read<AuthRepository>(),
     now: DateTime.now,
+    scheduleReminder: scheduleReminder,
   );
   context.read<ApiClient>().onUnauthorized = session.handleUnauthorized;
   session.start();

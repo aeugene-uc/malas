@@ -14,7 +14,12 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.6;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MalasApp(apiClient: buildApiClient(baseUrl: '')));
+    await tester.pumpWidget(
+      MalasApp(
+        apiClient: buildApiClient(baseUrl: ''),
+        scheduleReminder: (_) async {},
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Warung Bu Sari'));
     await tester.pumpAndSettle();

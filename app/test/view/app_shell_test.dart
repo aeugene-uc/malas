@@ -8,7 +8,12 @@ void main() {
   testWidgets('opensOnBerandaAndSwitchesTabWhenTapped', (tester) async {
     // A saved token, so the app starts signed in instead of on sign-in.
     FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
-    await tester.pumpWidget(MalasApp(apiClient: buildApiClient(baseUrl: '')));
+    await tester.pumpWidget(
+      MalasApp(
+        apiClient: buildApiClient(baseUrl: ''),
+        scheduleReminder: (_) async {},
+      ),
+    );
     // Beranda loads /home on open; let it finish so no request is left hanging.
     await tester.pumpAndSettle();
 

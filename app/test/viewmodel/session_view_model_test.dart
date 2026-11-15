@@ -17,12 +17,14 @@ final DateTime afterTrialEnds = DateTime.utc(2026, 12, 1);
 
 void main() {
   late RecordingAdapter adapter;
+  late List<Store?> scheduledReminders;
 
   SessionViewModel buildSession({
     required DateTime now,
     HttpClientAdapter? httpAdapter,
   }) {
     adapter = RecordingAdapter(bodiesByRoute: mockBodiesByRoute);
+    scheduledReminders = [];
     final dio = Dio(BaseOptions(baseUrl: 'http://mock'))
       ..httpClientAdapter = httpAdapter ?? adapter;
     return SessionViewModel(
@@ -31,6 +33,7 @@ void main() {
         secureStorage: const FlutterSecureStorage(),
       ),
       now: () => now,
+      scheduleReminder: (store) async => scheduledReminders.add(store),
     );
   }
 
@@ -114,6 +117,25 @@ void main() {
     await session.start();
 
     expect(session.isTrialSheetDue, isFalse);
+  });
+
+  test('setsTheEveningReminderForASetUpStore', () async {
+    FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
+    final session = buildSession(now: beforeTrialEnds);
+
+    await session.start();
+
+    expect(scheduledReminders.single!.reminderTime, '20:00');
+  });
+
+  test('clearsTheEveningReminderOnKeluar', () async {
+    FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
+    final session = buildSession(now: beforeTrialEnds);
+    await session.start();
+
+    await session.signOut();
+
+    expect(scheduledReminders.last, isNull);
   });
 
   test('pilihProRecordsTheChoiceOnTheStore', () async {
