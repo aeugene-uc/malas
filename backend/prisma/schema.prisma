@@ -56,6 +56,10 @@ model Store {
   trialEndsAt      DateTime?
   aiReadsThisMonth Int       @default(0)
   aiReadsResetAt   DateTime?
+  // Tanya questions this month (spec §18: Pro 300, Pro Plus 1.000), counted
+  // like AI reads.
+  questionsThisMonth Int       @default(0)
+  questionsResetAt   DateTime?
   createdAt        DateTime  @default(now())
 
   owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
