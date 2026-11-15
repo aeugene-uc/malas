@@ -5,6 +5,7 @@ export type ApiErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "CONSENT_REQUIRED"
+  | "PLAN_REQUIRED"
   | "NOT_FOUND"
   | "IDEMPOTENCY_CONFLICT"
   | "PLAN_LIMIT_REACHED"
@@ -17,6 +18,8 @@ const statusByCode: Record<ApiErrorCode, number> = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   CONSENT_REQUIRED: 403,
+  // Tanya on Gratis after the trial: the app opens the plan sheet (F8).
+  PLAN_REQUIRED: 403,
   NOT_FOUND: 404,
   IDEMPOTENCY_CONFLICT: 409,
   PLAN_LIMIT_REACHED: 429,
