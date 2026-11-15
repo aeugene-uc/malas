@@ -1,12 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 
 import 'data/api_client.dart';
+import 'data/auth_repository.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
-import 'view/app_shell.dart';
+import 'view/first_run/session_gate.dart';
 import 'viewmodel/app_shell_view_model.dart';
+import 'viewmodel/session_view_model.dart';
 
 /// Empty means the app runs on canned bodies. To use a real backend:
 /// `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1`
@@ -46,6 +49,13 @@ class MalasApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<ApiClient>.value(value: apiClient),
+        Provider(
+          create: (_) => AuthRepository(
+            apiClient: apiClient,
+            secureStorage: const FlutterSecureStorage(),
+          ),
+        ),
+        ChangeNotifierProvider(create: _startSession),
         ChangeNotifierProvider(create: (_) => AppShellViewModel()),
       ],
       child: MaterialApp(
@@ -53,8 +63,18 @@ class MalasApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         ),
-        home: const AppShell(),
+        home: const SessionGate(),
       ),
     );
   }
+}
+
+SessionViewModel _startSession(BuildContext context) {
+  final session = SessionViewModel(
+    authRepository: context.read<AuthRepository>(),
+    now: DateTime.now,
+  );
+  context.read<ApiClient>().onUnauthorized = session.handleUnauthorized;
+  session.start();
+  return session;
 }
