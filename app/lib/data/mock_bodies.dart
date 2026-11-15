@@ -53,6 +53,45 @@ const Map<String, Object> mockBodiesByRoute = {
     ],
   },
   'PATCH /items/:id': {'item': <String, Object>{}},
+  'GET /analytics/summary': {
+    'masuk': 8640000,
+    'keluar': 5210000,
+    'untung': 3430000,
+    'notCountedInProfit': {
+      'modal': 0,
+      'ambilPribadi': 600000,
+      'pinjaman': 0,
+      'titipan': 0,
+    },
+    'change': {'masuk': 0.12, 'keluar': -0.05, 'untung': null},
+    'daysRecorded': 10,
+    'daysInPeriod': 15,
+    'piutangAtEnd': 240000,
+    'utangAtEnd': 1200000,
+  },
+  'GET /analytics/by-item': {
+    'rows': [
+      {'id': 'item-1', 'name': 'Nasi goreng', 'amount': 4500000, 'share': 0.52},
+      {'id': 'item-2', 'name': 'Es teh', 'amount': 1800000, 'share': 0.21},
+      {'id': 'item-4', 'name': 'Mie goreng', 'amount': 1340000, 'share': 0.16},
+    ],
+  },
+  'GET /analytics/by-category': {
+    'rows': [
+      {'id': 'cat-bahan', 'name': 'Bahan', 'amount': 3100000, 'share': 0.6},
+      {'id': 'item-3', 'name': 'Gas', 'amount': 750000, 'share': 0.14},
+      {'id': 'cat-sewa', 'name': 'Sewa', 'amount': 1000000, 'share': 0.19},
+    ],
+  },
+  'GET /alerts': {
+    'alerts': [
+      {
+        'id': 'alert-1',
+        'rule': 'PRICE_RISE',
+        'message': 'Gas naik 12% dari pembelian terakhir',
+      },
+    ],
+  },
   'POST /auth/consent': {'consentAt': '2026-11-15T09:00:00.000Z'},
   'PATCH /stores/:id': {'store': <String, Object>{}},
   'GET /home': {
