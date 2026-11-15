@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { aiRouter } from "./routes/ai.js";
 import { authRouter } from "./routes/auth.js";
 import { healthRouter } from "./routes/health.js";
 import { handleError, handleNotFound } from "./errors.js";
@@ -11,6 +12,7 @@ export function createApp(): Express {
 
   app.use("/api/v1", healthRouter);
   app.use("/api/v1", authRouter);
+  app.use("/api/v1", aiRouter);
 
   app.use(handleNotFound);
   app.use(handleError);
