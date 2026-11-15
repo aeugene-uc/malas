@@ -37,6 +37,16 @@ export class ApiError extends Error {
   }
 }
 
+// Express 4 does not catch a rejected promise from an async handler, so every
+// async controller goes through this to reach handleError.
+export function handleAsync(
+  handler: (req: Request, res: Response, next: NextFunction) => Promise<void>,
+): (req: Request, res: Response, next: NextFunction) => void {
+  return (req, res, next) => {
+    handler(req, res, next).catch(next);
+  };
+}
+
 export function handleNotFound(_req: Request, res: Response): void {
   res.status(404).json({ error: { code: "NOT_FOUND", message: "Rute tidak ditemukan", fields: {} } });
 }
