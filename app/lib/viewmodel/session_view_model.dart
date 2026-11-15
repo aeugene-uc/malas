@@ -85,13 +85,17 @@ class SessionViewModel extends ChangeNotifier {
   /// "Pilih Pro" or "Lanjut Gratis". The December test has no Play Billing
   /// (§18), so Pro is recorded as the owner's choice and nothing is charged.
   Future<void> answerTrialSheet(Plan plan) async {
-    final account = _account;
-    if (account != null && plan != Plan.gratis) {
-      await _authRepository.choosePlan(storeId: account.store.id, plan: plan);
-    }
+    await choosePlan(plan);
     await _authRepository.markTrialSheetSeen();
     _isTrialSheetDue = false;
     notifyListeners();
+  }
+
+  /// Records a paid plan the owner picked. Gratis needs nothing sent.
+  Future<void> choosePlan(Plan plan) async {
+    final account = _account;
+    if (account == null || plan == Plan.gratis) return;
+    await _authRepository.choosePlan(storeId: account.store.id, plan: plan);
   }
 
   Future<void> _signOutLocally() async {

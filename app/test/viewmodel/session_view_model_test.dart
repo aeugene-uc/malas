@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +8,7 @@ import 'package:malas/model/account.dart';
 import 'package:malas/viewmodel/session_view_model.dart';
 
 import '../support/recording_adapter.dart';
+import '../support/status_adapter.dart';
 
 final DateTime beforeTrialEnds = DateTime.utc(2026, 11, 20);
 final DateTime afterTrialEnds = DateTime.utc(2026, 12, 1);
@@ -60,7 +58,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
     final session = buildSession(
       now: beforeTrialEnds,
-      httpAdapter: _StatusAdapter(401),
+      httpAdapter: StatusAdapter(401),
     );
 
     await session.start();
@@ -76,7 +74,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
     final session = buildSession(
       now: beforeTrialEnds,
-      httpAdapter: _StatusAdapter(500),
+      httpAdapter: StatusAdapter(500),
     );
 
     await session.start();
@@ -149,31 +147,4 @@ void main() {
     expect(adapter.lastRequest.path, '/stores/store-1');
     expect(adapter.lastRequest.data, {'plan': 'PRO'});
   });
-}
-
-/// Answers every request with [statusCode] and a backend error body.
-class _StatusAdapter implements HttpClientAdapter {
-  _StatusAdapter(this.statusCode);
-
-  final int statusCode;
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    return ResponseBody.fromString(
-      jsonEncode({
-        'error': {'code': 'FAILED', 'message': 'Server sedang bermasalah'},
-      }),
-      statusCode,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
-  }
-
-  @override
-  void close({bool force = false}) {}
 }
