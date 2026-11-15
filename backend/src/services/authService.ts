@@ -2,9 +2,11 @@ import { Prisma, type Store, type User } from "@prisma/client";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { ApiError } from "../errors.js";
+import { fixedCategoryRows } from "./categories.js";
 import { LoginLimiter } from "./loginLimiter.js";
 import { hashPassword, isPasswordCorrect } from "./password.js";
 import { normalisePhone } from "./phone.js";
+import { toStoreJson, type StoreJson } from "./storeService.js";
 import { signToken } from "./token.js";
 
 // Sign-in by phone number and password (#100), in the shapes F2 calls (#173).
@@ -15,18 +17,7 @@ export type AccountJson = { user: UserJson; stores: StoreJson[] };
 export type SessionJson = AccountJson & { token: string };
 
 type UserJson = { id: string; name: string; phone: string; consentAt: string | null };
-type StoreJson = {
-  id: string;
-  name: string;
-  businessTypes: unknown;
-  closedDays: unknown;
-  timezone: string;
-  dayChangeHour: number;
-  reminderTime: string | null;
-  alertsOn: boolean;
-  plan: Store["plan"];
-  trialEndsAt: string | null;
-};
+
 
 const TRIAL_DAYS = 14;
 const WRONG_SIGN_IN = "Nomor HP atau kata sandi salah";
@@ -45,7 +36,9 @@ export async function register(input: { name: string; phone: string; password: s
         name: input.name,
         phone,
         passwordHash,
-        stores: { create: { name: "", businessTypes: [], closedDays: [], trialEndsAt } },
+        // Spec §4.2: the fixed categories exist from the start, before the owner
+        // picks jenis usaha, since every kind of business uses the same ones.
+        stores: { create: { name: "", businessTypes: [], closedDays: [], trialEndsAt, categories: { create: fixedCategoryRows() } } },
       },
       include: { stores: true },
     });
@@ -129,17 +122,6 @@ function requirePhone(typed: string): string {
 function toAccountJson(user: User, stores: Store[]): AccountJson {
   return {
     user: { id: user.id, name: user.name, phone: user.phone, consentAt: user.consentAt?.toISOString() ?? null },
-    stores: stores.map((store) => ({
-      id: store.id,
-      name: store.name,
-      businessTypes: store.businessTypes,
-      closedDays: store.closedDays,
-      timezone: store.timezone,
-      dayChangeHour: store.dayChangeHour,
-      reminderTime: store.reminderTime,
-      alertsOn: store.alertsOn,
-      plan: store.plan,
-      trialEndsAt: store.trialEndsAt?.toISOString() ?? null,
-    })),
+    stores: stores.map(toStoreJson),
   };
 }
