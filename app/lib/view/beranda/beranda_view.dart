@@ -10,6 +10,7 @@ import '../../model/transaction.dart';
 import '../../viewmodel/beranda_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../bicara/bicara_view.dart';
+import '../catatan/piutang_utang_view.dart';
 import '../draft/draft_view.dart';
 import '../foto/foto_view.dart';
 import '../format.dart';
@@ -216,6 +217,7 @@ List<Widget> _buildCards(HomeCards cards) {
       _HomeCard(
         icon: Icons.account_balance_wallet_outlined,
         text: _describeOpenBalances(cards),
+        buildRoute: PiutangUtangView.route,
       ),
     if (dueToday != null)
       _HomeCard(
@@ -296,15 +298,25 @@ class _Total extends StatelessWidget {
 }
 
 class _HomeCard extends StatelessWidget {
-  const _HomeCard({required this.icon, required this.text});
+  const _HomeCard({required this.icon, required this.text, this.buildRoute});
 
   final IconData icon;
   final String text;
 
+  /// The screen a tap opens, for cards that lead somewhere.
+  final Route<void> Function()? buildRoute;
+
   @override
   Widget build(BuildContext context) {
+    final buildRoute = this.buildRoute;
     return Card(
-      child: ListTile(leading: Icon(icon), title: Text(text)),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(text),
+        onTap: buildRoute == null
+            ? null
+            : () => Navigator.of(context).push(buildRoute()),
+      ),
     );
   }
 }

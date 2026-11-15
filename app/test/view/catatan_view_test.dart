@@ -71,6 +71,41 @@ void main() {
     expect(find.text('Kembalikan Rp 50.000'), findsOneWidget);
   });
 
+  testWidgets('anAnalisisRowOpensCatatanNarrowedToIt', (tester) async {
+    await openCatatan(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Analisis'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Sewa'), 100);
+    await tester.ensureVisible(find.text('Sewa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sewa'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(InputChip, 'Sewa'), findsOneWidget);
+  });
+
+  testWidgets('theBerandaPiutangCardOpensPiutangUtang', (tester) async {
+    await openCatatan(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Beranda'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('Piutang Rp 240.000'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PiutangUtangView), findsOneWidget);
+  });
+
   test('theReminderTextNamesThePersonAmountAndDueDate', () async {
     final repository = TransactionRepository(
       ApiClient(

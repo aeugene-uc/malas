@@ -181,6 +181,7 @@ class RankedRow {
     required this.name,
     required this.amount,
     required this.share,
+    this.isItem = false,
   });
 
   factory RankedRow.fromJson(Map<String, Object?> json) {
@@ -189,6 +190,7 @@ class RankedRow {
       name: json['name'] as String,
       amount: json['amount'] as int,
       share: (json['share'] as num).toDouble(),
+      isItem: json['kind'] == 'item',
     );
   }
 
@@ -198,4 +200,8 @@ class RankedRow {
 
   /// A fraction of the period's total, `0.25` for a quarter.
   final double share;
+
+  /// Money out lists categories and expense items together (§7.6), so each
+  /// row says which it is: `kind: "item"`, otherwise a category.
+  final bool isItem;
 }
