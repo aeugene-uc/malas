@@ -1,4 +1,5 @@
 import type { HeardPriceItem } from "../ai/photoPrompt.js";
+import { normaliseName } from "./normaliseName.js";
 import { UNITS, parseRupiah, type Unit } from "./numberWords.js";
 
 // Spec §9 "Read price list": code removes duplicates and rejects prices of 0 or
@@ -38,8 +39,4 @@ export function buildPriceList(heardItems: HeardPriceItem[]): PriceListResult {
     items.push({ name: heard.name, price, unit });
   }
   return { items, skipped };
-}
-
-function normaliseName(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, " ").trim();
 }
