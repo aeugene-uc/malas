@@ -6,6 +6,7 @@ import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/data/tanya_repository.dart';
 import 'package:malas/viewmodel/tanya_view_model.dart';
 
+import '../support/recording_adapter.dart';
 import '../support/status_adapter.dart';
 
 void main() {
@@ -30,6 +31,20 @@ void main() {
     expect(exchange.question, 'Apa yang paling laku?');
     expect(exchange.answer!.figures, hasLength(4));
     expect(viewModel.isAsking, isFalse);
+  });
+
+  test('sendsTheLastQuestionAsContextForAFollowUp', () async {
+    final adapter = RecordingAdapter(bodiesByRoute: mockBodiesByRoute);
+    final viewModel = buildViewModel(adapter);
+
+    await viewModel.ask('pemasukan bln ini brp?');
+    expect(adapter.lastRequest.data, {'question': 'pemasukan bln ini brp?'});
+
+    await viewModel.ask('klo thn kmrn?');
+    expect(adapter.lastRequest.data, {
+      'question': 'klo thn kmrn?',
+      'previousQuestion': 'pemasukan bln ini brp?',
+    });
   });
 
   test('ignoresAnEmptyQuestion', () async {

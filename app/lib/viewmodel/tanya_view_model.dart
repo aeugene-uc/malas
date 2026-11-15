@@ -36,10 +36,14 @@ class TanyaViewModel extends ChangeNotifier {
   Future<void> ask(String question) async {
     final trimmedQuestion = question.trim();
     if (trimmedQuestion.isEmpty || isAsking) return;
+    final previousQuestion = _exchanges.lastOrNull?.question;
     _exchanges = [..._exchanges, TanyaExchange(question: trimmedQuestion)];
     notifyListeners();
     try {
-      final answer = await _tanyaRepository.ask(trimmedQuestion);
+      final answer = await _tanyaRepository.ask(
+        trimmedQuestion,
+        previousQuestion: previousQuestion,
+      );
       _finishLast(TanyaExchange(question: trimmedQuestion, answer: answer));
     } on ApiException catch (error) {
       _isPlanSheetDue = error.code == planRequiredCode;

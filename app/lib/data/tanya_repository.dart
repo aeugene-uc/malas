@@ -8,10 +8,14 @@ class TanyaRepository {
 
   final ApiClient _apiClient;
 
-  /// A free plan gets [ApiException] code `PLAN_REQUIRED` (403), and the
-  /// monthly limit gets status 429.
-  Future<TanyaAnswer> ask(String question) async {
-    final body = await _apiClient.post('/ai/ask', body: {'question': question});
+  /// [previousQuestion] is context for a follow-up such as "klo thn kmrn?".
+  /// The server keeps no history (#183). A free plan gets [ApiException]
+  /// code `PLAN_REQUIRED` (403), and the monthly limit gets status 429.
+  Future<TanyaAnswer> ask(String question, {String? previousQuestion}) async {
+    final body = await _apiClient.post(
+      '/ai/ask',
+      body: {'question': question, 'previousQuestion': ?previousQuestion},
+    );
     return TanyaAnswer.fromJson(body as Map<String, Object?>);
   }
 }
