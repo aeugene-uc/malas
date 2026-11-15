@@ -56,3 +56,15 @@ test("refusesTheAccountAndConsentRoutesWithoutAValidToken", async () => {
     assert.deepEqual([status, body.error?.code], [401, "UNAUTHORIZED"], `${method} ${path} ${token}`);
   }
 });
+
+test("locksANumberAfterFiveWrongTriesAndSaysWhenToTryAgain", async () => {
+  const body = { phone: "bukan nomor 2", password: "warung123" };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    assert.equal((await call("POST", "/auth/login", { body })).status, 401);
+  }
+  const locked = await call("POST", "/auth/login", { body });
+  assert.deepEqual(
+    [locked.status, locked.body.error?.code, locked.body.error?.message],
+    [429, "TOO_MANY_ATTEMPTS", "Terlalu banyak percobaan. Coba lagi dalam 15 menit."],
+  );
+});

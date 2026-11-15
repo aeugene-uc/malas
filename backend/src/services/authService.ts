@@ -2,6 +2,7 @@ import { Prisma, type Store, type User } from "@prisma/client";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { ApiError } from "../errors.js";
+import { LoginLimiter } from "./loginLimiter.js";
 import { hashPassword, isPasswordCorrect } from "./password.js";
 import { normalisePhone } from "./phone.js";
 import { signToken } from "./token.js";
@@ -32,6 +33,8 @@ const WRONG_SIGN_IN = "Nomor HP atau kata sandi salah";
 // Checked against when the phone number has no account. No password matches it.
 const UNKNOWN_USER_HASH = `scrypt$${"0".repeat(32)}$${"0".repeat(128)}`;
 
+const loginLimiter = new LoginLimiter();
+
 export async function register(input: { name: string; phone: string; password: string }): Promise<SessionJson> {
   const phone = requirePhone(input.phone);
   const passwordHash = await hashPassword(input.password);
@@ -59,13 +62,22 @@ export async function register(input: { name: string; phone: string; password: s
 
 export async function login(input: { phone: string; password: string }): Promise<SessionJson> {
   const phone = normalisePhone(input.phone);
+  // A number that is not a valid mobile still counts against itself as typed.
+  const phoneKey = phone ?? input.phone.trim().toLowerCase();
+  const lockRemainingMs = loginLimiter.lockRemainingMs(phoneKey, Date.now());
+  if (lockRemainingMs > 0) {
+    const minutes = Math.ceil(lockRemainingMs / 60_000);
+    throw new ApiError({ code: "TOO_MANY_ATTEMPTS", message: `Terlalu banyak percobaan. Coba lagi dalam ${minutes} menit.` });
+  }
   const user = phone === null ? null : await prisma.user.findUnique({ where: { phone }, include: { stores: { orderBy: { createdAt: "asc" } } } });
   // The same answer, and the same scrypt work, for an unknown number and a wrong
   // password, so neither the message nor the timing reveals who has an account.
   const isCorrect = await isPasswordCorrect(input.password, user?.passwordHash ?? UNKNOWN_USER_HASH);
   if (user === null || !isCorrect) {
+    loginLimiter.recordFailure(phoneKey, Date.now());
     throw new ApiError({ code: "UNAUTHORIZED", message: WRONG_SIGN_IN });
   }
+  loginLimiter.recordSuccess(phoneKey);
   return startSession(user, user.stores);
 }
 

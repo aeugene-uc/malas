@@ -8,6 +8,7 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "IDEMPOTENCY_CONFLICT"
   | "PLAN_LIMIT_REACHED"
+  | "TOO_MANY_ATTEMPTS"
   | "INTERNAL";
 
 const statusByCode: Record<ApiErrorCode, number> = {
@@ -18,6 +19,7 @@ const statusByCode: Record<ApiErrorCode, number> = {
   NOT_FOUND: 404,
   IDEMPOTENCY_CONFLICT: 409,
   PLAN_LIMIT_REACHED: 429,
+  TOO_MANY_ATTEMPTS: 429,
   INTERNAL: 500,
 };
 
