@@ -9,6 +9,7 @@ export type ApiErrorCode =
   | "IDEMPOTENCY_CONFLICT"
   | "PLAN_LIMIT_REACHED"
   | "TOO_MANY_ATTEMPTS"
+  | "AI_READ_FAILED"
   | "INTERNAL";
 
 const statusByCode: Record<ApiErrorCode, number> = {
@@ -20,6 +21,8 @@ const statusByCode: Record<ApiErrorCode, number> = {
   IDEMPOTENCY_CONFLICT: 409,
   PLAN_LIMIT_REACHED: 429,
   TOO_MANY_ATTEMPTS: 429,
+  // The model failed twice (spec 12). The app keeps the input and offers Coba lagi.
+  AI_READ_FAILED: 503,
   INTERNAL: 500,
 };
 

@@ -7,7 +7,7 @@ import {
   validateHeardPriceList,
 } from "../ai/photoPrompt.js";
 import { VOICE_SYSTEM_PROMPT, validateHeardLines } from "../ai/readPrompt.js";
-import { buildDrafts, type BuiltDrafts } from "./draftBuilder.js";
+import { buildDrafts, type BuiltDrafts, type SavedRecords } from "./draftBuilder.js";
 import { buildPriceList, type PriceListResult } from "./priceList.js";
 
 // Spec §9 "Read voice". A failed read returns no drafts so the caller shows an
@@ -20,6 +20,8 @@ type ReadOptions = {
   transcript: string;
   inputId: string | null;
   todayBusinessDate: string;
+  // The store's saved items and people, for matching names and filling prices.
+  saved?: SavedRecords;
 };
 
 export async function readVoiceTranscript(options: ReadOptions): Promise<ReadResult> {
@@ -35,6 +37,7 @@ export async function readVoiceTranscript(options: ReadOptions): Promise<ReadRes
     source: "VOICE",
     inputId: options.inputId,
     todayBusinessDate: options.todayBusinessDate,
+    ...(options.saved === undefined ? {} : { saved: options.saved }),
   });
   return { isRead: true, model: reply.model, tokens: reply.tokens, ...built };
 }
@@ -45,6 +48,8 @@ type PhotoOptions = {
   image: AiImage;
   inputId: string | null;
   todayBusinessDate: string;
+  // The store's saved items and people, for matching names and filling prices.
+  saved?: SavedRecords;
 };
 
 // Spec §9 "Read photo" and "Read notebook page". The page's date, seller and
@@ -65,6 +70,7 @@ export async function readPhoto(options: PhotoOptions): Promise<ReadResult> {
     source: options.source,
     inputId: options.inputId,
     todayBusinessDate: options.todayBusinessDate,
+    ...(options.saved === undefined ? {} : { saved: options.saved }),
     document: { seller, date, totalText },
   });
   return { isRead: true, model: reply.model, tokens: reply.tokens, ...built };
