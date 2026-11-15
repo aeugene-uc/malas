@@ -1,0 +1,290 @@
+// MALAS — data model from spec §11, calculations per §10.
+// All money is integer rupiah. No floats anywhere in this schema.
+// "After the test" fields from §11 are deliberately omitted (post-MVP).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  // The `malas` user cannot create databases, so `prisma migrate dev` is
+  // given a pre-made empty one instead of making its own throwaway.
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Sign-in. Not in the spec (§13 planned no accounts); added per #29 and #100.
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  // Sign-in is phone number + password (#100). Stored in E.164 (+62...) so the
+  // same owner cannot register twice as 0812... and +62812... (#104).
+  phone        String    @unique
+  passwordHash String
+  name         String
+  // UU 27/2022: consent is recorded, not assumed. Null means not yet given.
+  consentAt    DateTime?
+  createdAt    DateTime  @default(now())
+  stores       Store[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Store is the tenant boundary. Every owned row carries storeId, so one
+// owner's records cannot be reached through another owner's queries.
+// ---------------------------------------------------------------------------
+
+model Store {
+  id               String    @id @default(cuid())
+  ownerId          String
+  name             String
+  businessTypes    Json
+  closedDays       Json
+  // Needed to resolve dayChangeHour into a businessDate. Indonesia spans
+  // WIB/WITA/WIT, so the hour alone is not enough. IANA name, not an offset.
+  timezone         String    @default("Asia/Jakarta")
+  dayChangeHour    Int       @default(4)
+  reminderTime     String?
+  plan             Plan      @default(GRATIS)
+  trialEndsAt      DateTime?
+  aiReadsThisMonth Int       @default(0)
+  aiReadsResetAt   DateTime?
+  createdAt        DateTime  @default(now())
+
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  categories   Category[]
+  items        Item[]
+  people       Person[]
+  transactions Transaction[]
+  inputs       Input[]
+  alerts       Alert[]
+
+  @@index([ownerId])
+  @@map("stores")
+}
+
+enum Plan {
+  GRATIS
+  PRO
+  PRO_PLUS
+}
+
+model Category {
+  id              String    @id @default(cuid())
+  storeId         String
+  name            String
+  direction       Direction
+  countedInProfit Boolean   @default(true)
+  fixed           Boolean   @default(false)
+
+  store Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items Item[]
+  lines Line[]
+
+  @@unique([storeId, name, direction])
+  @@index([storeId])
+  @@map("categories")
+}
+
+enum Direction {
+  IN
+  OUT
+}
+
+model Item {
+  id             String   @id @default(cuid())
+  storeId        String
+  name           String
+  normalisedName String
+  kind           ItemKind
+  categoryId     String?
+  savedPrice     Int?
+  unit           String?
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  lines    Line[]
+  alerts   Alert[]
+
+  // The AI matches spoken item names against normalisedName.
+  @@unique([storeId, normalisedName, kind])
+  @@index([storeId])
+  @@index([categoryId])
+  @@map("items")
+}
+
+enum ItemKind {
+  SOLD
+  BOUGHT
+}
+
+model Person {
+  id             String  @id @default(cuid())
+  storeId        String
+  name           String
+  // §15: this value is never placed in an AI prompt.
+  whatsappNumber String?
+
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([storeId])
+  @@map("people")
+}
+
+model Transaction {
+  id                  String    @id @default(cuid())
+  storeId             String
+  // §10: resolved against the store's day-change hour before it is written,
+  // so night sales stay on one date. A date, not a timestamp.
+  businessDate        DateTime  @db.Date
+  direction           Direction
+  total               Int
+  personId            String?
+  dueDate             DateTime? @db.Date
+  linkedTransactionId String?
+  source              Source
+  inputId             String?
+  note                String?   @db.Text
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  person Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  input  Input?  @relation(fields: [inputId], references: [id], onDelete: SetNull)
+
+  // Loans and returns point at the transaction they settle.
+  linkedTransaction Transaction?  @relation("TransactionLink", fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+  linkedBy          Transaction[] @relation("TransactionLink")
+
+  lines    Line[]
+  payments Payment[]
+  edits    EditHistory[]
+
+  @@index([storeId, businessDate])
+  @@index([storeId, direction, businessDate])
+  @@index([personId])
+  @@index([inputId])
+  @@index([linkedTransactionId])
+  @@map("transactions")
+}
+
+enum Source {
+  TYPED
+  VOICE
+  PHOTO
+  NOTEBOOK
+}
+
+model Line {
+  id            String  @id @default(cuid())
+  transactionId String
+  itemId        String?
+  categoryId    String?
+  // Optional: the simplest entry is an amount with no quantity at all
+  // (§4, "Omzet hari ini 1,2 juta"). Decimal, not Int, because
+  // "setengah kilo" is a real quantity. Never used for money.
+  // Serializes to JSON as a string ("0.5") — see the API contract.
+  quantity      Decimal? @db.Decimal(12, 3)
+  unit          String?
+  unitPrice     Int?
+  // §10: spoken or printed total when given, else quantity x unitPrice.
+  lineTotal     Int
+  // §10: quantity x unitPrice - lineTotal. Computed in code, stored for history.
+  discount      Int     @default(0)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  item        Item?       @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId])
+  @@index([itemId])
+  @@index([categoryId])
+  @@map("lines")
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  transactionId String
+  // §10: money counts on this date, which may differ from the transaction's
+  // businessDate (an order paid with DP).
+  date          DateTime @db.Date
+  amount        Int
+  label         String?
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([date])
+  @@map("payments")
+}
+
+model EditHistory {
+  id            String   @id @default(cuid())
+  transactionId String
+  at            DateTime @default(now())
+  previous      Json
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("edit_history")
+}
+
+model Input {
+  id         String      @id @default(cuid())
+  storeId    String
+  kind       InputKind
+  // Transcript text, or the stored reference for a photo.
+  transcript String?     @db.Text
+  photoRef   String?
+  imageHash  String?
+  status     InputStatus @default(QUEUED)
+  model      String?
+  tokens     Int?
+  createdAt  DateTime    @default(now())
+
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  // imageHash dedupes a re-read so a retry does not spend an AI read.
+  @@index([storeId, status])
+  @@index([storeId, imageHash])
+  @@map("inputs")
+}
+
+enum InputKind {
+  VOICE
+  PHOTO
+  NOTEBOOK
+  TYPED
+}
+
+enum InputStatus {
+  QUEUED
+  READ
+  FAILED
+}
+
+model Alert {
+  id         String   @id @default(cuid())
+  storeId    String
+  rule       String
+  itemId     String?
+  categoryId String?
+  entryId    String?
+  value      String?
+  createdAt  DateTime @default(now())
+  seen       Boolean  @default(false)
+  muted      Boolean  @default(false)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  item  Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, seen])
+  @@map("alerts")
+}
