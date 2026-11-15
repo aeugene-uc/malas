@@ -47,12 +47,19 @@ class ItemsViewModel extends ChangeNotifier {
       return false;
     }
     final digits = priceText.replaceAll(RegExp(r'[^0-9]'), '');
+    final savedItem = Item(
+      id: item.id,
+      name: trimmedName,
+      kind: item.kind,
+      unit: unit,
+      savedPrice: digits.isEmpty ? null : int.parse(digits),
+    );
     try {
-      final savedItem = await _storeRepository.updateItem(
-        itemId: item.id,
-        name: trimmedName,
-        unit: unit,
-        savedPrice: digits.isEmpty ? null : int.parse(digits),
+      await _storeRepository.updateItem(
+        itemId: savedItem.id,
+        name: savedItem.name,
+        unit: savedItem.unit,
+        savedPrice: savedItem.savedPrice,
       );
       _items = [
         for (final existingItem in _items)

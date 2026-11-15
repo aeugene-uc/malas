@@ -1,24 +1,20 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/api_client.dart';
-import '../data/auth_repository.dart';
 import '../data/store_repository.dart';
 import '../model/account.dart';
 
 /// Settings (§6): jenis usaha, closed days, day-change hour, evening
 /// reminder and alerts. Edits stay on screen until Simpan.
 class SettingsViewModel extends ChangeNotifier {
-  SettingsViewModel({
-    required Account account,
-    required this._storeRepository,
-    required this._authRepository,
-  }) : _storeId = account.store.id,
-       _savedStore = account.store,
-       _businessTypes = {...account.store.businessTypes},
-       _closedDays = {...account.store.closedDays},
-       _dayChangeHour = account.store.dayChangeHour,
-       _reminderTime = account.store.reminderTime,
-       _isAlertsOn = account.store.isAlertsOn;
+  SettingsViewModel({required Account account, required this._storeRepository})
+    : _account = account,
+      _savedStore = account.store,
+      _businessTypes = {...account.store.businessTypes},
+      _closedDays = {...account.store.closedDays},
+      _dayChangeHour = account.store.dayChangeHour,
+      _reminderTime = account.store.reminderTime,
+      _isAlertsOn = account.store.isAlertsOn;
 
   /// The day-change hours offered: a night stall closing at 3 still counts
   /// its sales on the evening's date.
@@ -26,8 +22,7 @@ class SettingsViewModel extends ChangeNotifier {
   static const String defaultReminderTime = '20:00';
 
   final StoreRepository _storeRepository;
-  final AuthRepository _authRepository;
-  final String _storeId;
+  final Account _account;
   final Store _savedStore;
 
   final Set<BusinessType> _businessTypes;
@@ -89,7 +84,7 @@ class SettingsViewModel extends ChangeNotifier {
     _changed();
   }
 
-  /// Returns the account as the server now has it, or null with
+  /// Returns the account with the saved settings, or null with
   /// [errorMessage] saying why.
   Future<Account?> save() async {
     if (_businessTypes.isEmpty) {
@@ -102,14 +97,23 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _storeRepository.saveSettings(
-        storeId: _storeId,
+        storeId: _savedStore.id,
         businessTypes: _businessTypes,
         closedDays: _closedDays,
         dayChangeHour: _dayChangeHour,
         reminderTime: _reminderTime,
         isAlertsOn: _isAlertsOn,
       );
-      return await _authRepository.fetchAccount();
+      return Account(
+        user: _account.user,
+        store: _savedStore.withSettings(
+          businessTypes: {..._businessTypes},
+          closedDays: {..._closedDays},
+          dayChangeHour: _dayChangeHour,
+          reminderTime: _reminderTime,
+          isAlertsOn: _isAlertsOn,
+        ),
+      );
     } on ApiException catch (error) {
       _errorMessage = error.message;
       return null;

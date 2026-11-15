@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
-import 'package:malas/data/auth_repository.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/data/store_repository.dart';
 import 'package:malas/model/account.dart';
@@ -31,10 +30,6 @@ void main() {
   SettingsViewModel buildSettings() => SettingsViewModel(
     account: account,
     storeRepository: StoreRepository(apiClient),
-    authRepository: AuthRepository(
-      apiClient: apiClient,
-      secureStorage: const FlutterSecureStorage(),
-    ),
   );
 
   test('startsFromTheStoresSavedSettingsWithNothingToSave', () {
@@ -82,7 +77,20 @@ void main() {
       'reminderTime': null,
       'alertsOn': false,
     });
-    expect(savedAccount, isNotNull);
+    expect(savedAccount!.store.closedDays, {DateTime.friday, DateTime.sunday});
+    expect(savedAccount.store.dayChangeHour, 3);
+    expect(savedAccount.store.reminderTime, isNull);
+    expect(savedAccount.store.isAlertsOn, isFalse);
+  });
+
+  test('simpanKeepsTheNewReminderTimeForTheReminder', () async {
+    final settings = buildSettings();
+
+    settings.selectReminderTime('19:45');
+    final savedAccount = await settings.save();
+
+    expect(savedAccount!.store.reminderTime, '19:45');
+    expect(savedAccount.store.name, 'Warung Bu Sari');
   });
 
   test('needsAtLeastOneJenisUsaha', () async {
@@ -118,6 +126,28 @@ void main() {
         'savedPrice': 4000,
       });
       expect(items.items[1].name, 'Es teh manis');
+    });
+
+    test('editingOneItemLeavesTheOthersAsTheyWere', () async {
+      final items = buildItems();
+      await items.load();
+      final gas = items.items.last;
+
+      await items.saveItem(
+        item: gas,
+        name: 'Gas 3 kg',
+        unit: 'pcs',
+        priceText: '22000',
+      );
+
+      expect(items.items.map((item) => item.name), [
+        'Nasi goreng',
+        'Es teh',
+        'Gas 3 kg',
+      ]);
+      expect(items.items.last.kind, ItemKind.dibeli);
+      expect(items.items.last.savedPrice, 22000);
+      expect(items.items[1].savedPrice, 3000);
     });
 
     test('anEmptyPriceClearsIt', () async {

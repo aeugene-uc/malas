@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/auth_repository.dart';
 import '../../data/store_repository.dart';
 import '../../model/account.dart';
 import '../../viewmodel/session_view_model.dart';
@@ -19,7 +18,6 @@ class SettingsView extends StatelessWidget {
         create: (context) => SettingsViewModel(
           account: account,
           storeRepository: context.read<StoreRepository>(),
-          authRepository: context.read<AuthRepository>(),
         ),
         child: const SettingsView(),
       ),
@@ -169,7 +167,25 @@ class SettingsView extends StatelessWidget {
 
   Future<void> _signOut(BuildContext context) async {
     final navigator = Navigator.of(context);
-    await context.read<SessionViewModel>().signOut();
+    final session = context.read<SessionViewModel>();
+    final isConfirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (isConfirmed != true) return;
+    await session.signOut();
     navigator.popUntil((route) => route.isFirst);
   }
 }

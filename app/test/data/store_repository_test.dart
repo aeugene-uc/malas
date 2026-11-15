@@ -64,8 +64,8 @@ void main() {
     expect(items.last.savedPrice, isNull);
   });
 
-  test('updatesAnItemAndReturnsTheServersVersion', () async {
-    final item = await repository.updateItem(
+  test('sendsTheItemsNewNameUnitAndPrice', () async {
+    await repository.updateItem(
       itemId: 'item-2',
       name: 'Es teh manis',
       unit: 'pcs',
@@ -78,6 +78,5 @@ void main() {
       'unit': 'pcs',
       'savedPrice': 4000,
     });
-    expect(item.savedPrice, 4000);
   });
 }

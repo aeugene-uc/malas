@@ -105,6 +105,29 @@ class Store {
   final String timezone;
   final bool isAlertsOn;
 
+  /// This store after Settings saved new values, which the server accepted
+  /// as they were sent.
+  Store withSettings({
+    required Set<BusinessType> businessTypes,
+    required Set<int> closedDays,
+    required int dayChangeHour,
+    required String? reminderTime,
+    required bool isAlertsOn,
+  }) {
+    return Store(
+      id: id,
+      name: name,
+      businessTypes: businessTypes,
+      plan: plan,
+      trialEndsAt: trialEndsAt,
+      closedDays: closedDays,
+      dayChangeHour: dayChangeHour,
+      reminderTime: reminderTime,
+      timezone: timezone,
+      isAlertsOn: isAlertsOn,
+    );
+  }
+
   /// The trial sheet shows on the first open after day 14 (§8.11), and only
   /// to a store that has not chosen a paid plan.
   bool isTrialOverAt(DateTime now) {

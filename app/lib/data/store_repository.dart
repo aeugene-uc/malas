@@ -38,16 +38,15 @@ class StoreRepository {
     ];
   }
 
-  Future<Item> updateItem({
+  Future<void> updateItem({
     required String itemId,
     required String name,
     required String? unit,
     required int? savedPrice,
   }) async {
-    final body = await _apiClient.patch(
+    await _apiClient.patch(
       '/items/$itemId',
       body: {'name': name, 'unit': unit, 'savedPrice': savedPrice},
-    ) as Map<String, Object?>;
-    return Item.fromJson(body['item'] as Map<String, Object?>);
+    );
   }
 }

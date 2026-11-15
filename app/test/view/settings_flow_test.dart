@@ -60,13 +60,34 @@ void main() {
     expect(find.text('harga belum ada'), findsOneWidget);
   });
 
-  testWidgets('keluarGoesBackToSignIn', (tester) async {
-    await openSettings(tester);
-
+  Future<void> tapKeluar(WidgetTester tester) async {
     await tester.scrollUntilVisible(find.text('Keluar'), 100);
     await tester.ensureVisible(find.text('Keluar'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Keluar'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('keluarAsksFirstAndBatalStaysSignedIn', (tester) async {
+    await openSettings(tester);
+
+    await tapKeluar(tester);
+    expect(find.text('Keluar dari akun?'), findsOneWidget);
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SettingsView), findsOneWidget);
+    expect(
+      await const FlutterSecureStorage().read(key: AuthRepository.tokenKey),
+      isNotNull,
+    );
+  });
+
+  testWidgets('confirmingKeluarGoesBackToSignIn', (tester) async {
+    await openSettings(tester);
+
+    await tapKeluar(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
     await tester.pumpAndSettle();
 
     expect(find.byType(SignInView), findsOneWidget);

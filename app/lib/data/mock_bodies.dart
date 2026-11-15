@@ -52,15 +52,7 @@ const Map<String, Object> mockBodiesByRoute = {
       },
     ],
   },
-  'PATCH /items/:id': {
-    'item': {
-      'id': 'item-2',
-      'name': 'Es teh manis',
-      'kind': 'SOLD',
-      'unit': 'pcs',
-      'savedPrice': 4000,
-    },
-  },
+  'PATCH /items/:id': {'item': <String, Object>{}},
   'POST /auth/consent': {'consentAt': '2026-11-15T09:00:00.000Z'},
   'PATCH /stores/:id': {'store': <String, Object>{}},
   'GET /home': {
