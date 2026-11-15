@@ -76,10 +76,16 @@ export class StoreQueries implements TanyaQueries {
     return { rows: rankRows(rows, options.limit), daysRecorded: await this.daysRecorded(options.range) };
   }
 
-  async openBalances(kind: "PIUTANG" | "UTANG"): Promise<OpenBalances> {
+  // asOf gives the balances at the end of a past period (Analisis); null is now.
+  async openBalances(kind: "PIUTANG" | "UTANG", asOf: string | null = null): Promise<OpenBalances> {
     const transactions = await prisma.transaction.findMany({
-      where: { storeId: this.storeId, deletedAt: null },
-      select: { direction: true, total: true, person: { select: { name: true } }, payments: { select: { amount: true } } },
+      where: { storeId: this.storeId, deletedAt: null, ...(asOf === null ? {} : { businessDate: { lte: toDate(asOf) } }) },
+      select: {
+        direction: true,
+        total: true,
+        person: { select: { name: true } },
+        payments: { where: asOf === null ? {} : { date: { lte: toDate(asOf) } }, select: { amount: true } },
+      },
     });
     return sumOpenBalances(
       transactions.map((transaction) => ({
