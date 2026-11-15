@@ -15,12 +15,13 @@ Future<Uint8List> buildAnalisisPdf({
   required List<RankedRow> masukRows,
   required List<RankedRow> keluarRows,
 }) {
-  final document = pw.Document(title: '$storeName ${formatPeriodLabel(range)}');
+  final periodLabel = pdfSafe(formatPeriodLabel(range));
+  final document = pw.Document(title: '$storeName $periodLabel');
   document.addPage(
     pw.MultiPage(
       build: (context) => [
         pw.Header(level: 0, text: storeName),
-        pw.Text(formatPeriodLabel(range)),
+        pw.Text(periodLabel),
         pw.SizedBox(height: 16),
         pw.TableHelper.fromTextArray(
           headers: ['', 'Jumlah', 'Perubahan'],
@@ -31,6 +32,7 @@ Future<Uint8List> buildAnalisisPdf({
               _figureRow('Untung', untung, summary.changes.untung),
           ],
         ),
+        pw.SizedBox(height: 8),
         for (final line in notCountedLines(summary.notCountedInProfit))
           pw.Text(line),
         pw.SizedBox(height: 12),
@@ -50,8 +52,14 @@ Future<Uint8List> buildAnalisisPdf({
   return document.save();
 }
 
+/// The PDF's built-in Helvetica has no en or em dash, which show as boxes.
+/// The WhatsApp text keeps them, since phones render them.
+String pdfSafe(String text) {
+  return text.replaceAll('–', '-').replaceAll('—', '-');
+}
+
 List<String> _figureRow(String label, int amount, double? change) {
-  return [label, formatRupiah(amount), formatChange(change)];
+  return [label, formatRupiah(amount), pdfSafe(formatChange(change))];
 }
 
 List<pw.Widget> _rankedTable(String title, List<RankedRow> rows) {

@@ -34,6 +34,12 @@ void main() {
     expect(pdfBytes.length, greaterThan(1000));
   });
 
+  test('replacesDashesTheBuiltInPdfFontCannotDraw', () {
+    expect(pdfSafe('9–15 Nov 2026'), '9-15 Nov 2026');
+    expect(pdfSafe('—'), '-');
+    expect(pdfSafe('Rp 8.640.000 · +12%'), 'Rp 8.640.000 · +12%');
+  });
+
   test('readsTheEditedEntryCountForThePdf', () {
     final summary = AnalyticsSummary.fromJson(
       mockBodiesByRoute['GET /analytics/summary']! as Map<String, Object?>,
