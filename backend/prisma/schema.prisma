@@ -49,6 +49,9 @@ model Store {
   timezone         String    @default("Asia/Jakarta")
   dayChangeHour    Int       @default(4)
   reminderTime     String?
+  // The Peringatan switch in Settings (F9, #176). Off hides the alert cards
+  // and skips alerts in the evening reminder.
+  alertsOn         Boolean   @default(true)
   plan             Plan      @default(GRATIS)
   trialEndsAt      DateTime?
   aiReadsThisMonth Int       @default(0)
