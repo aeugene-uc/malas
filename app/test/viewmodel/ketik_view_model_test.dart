@@ -155,12 +155,29 @@ void main() {
         await offlineViewModel.simpan();
 
         expect(offlineViewModel.categoryId, 'cat-1');
+        expect(offlineViewModel.isMissingCategories, isFalse);
         expect(
           [for (final unsent in await store.load()) unsent.draft.total],
           [75000],
         );
       },
     );
+
+    test('cobaLagiFetchesCategoriesThatNeverArrived', () async {
+      adapter.isOffline = true;
+      await offlineViewModel.loadCategories();
+      offlineViewModel.setAmount(75000);
+
+      expect(offlineViewModel.isMissingCategories, isTrue);
+      expect(offlineViewModel.canSave, isFalse);
+
+      adapter.isOffline = false;
+      await offlineViewModel.loadCategories();
+
+      expect(offlineViewModel.isMissingCategories, isFalse);
+      expect(offlineViewModel.categoryId, 'cat-1');
+      expect(offlineViewModel.canSave, isTrue);
+    });
   });
 }
 

@@ -101,9 +101,7 @@ class KetikView extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
                 ),
-                onPressed: viewModel.canSave
-                    ? () => _simpan(context, viewModel)
-                    : null,
+                onPressed: _buttonAction(context, viewModel),
                 child: Text(errorMessage == null ? 'Simpan' : 'Coba lagi'),
               ),
             ],
@@ -111,6 +109,13 @@ class KetikView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  VoidCallback? _buttonAction(BuildContext context, KetikViewModel viewModel) {
+    if (viewModel.isLoading) return null;
+    if (viewModel.isMissingCategories) return viewModel.loadCategories;
+    if (!viewModel.canSave) return null;
+    return () => _simpan(context, viewModel);
   }
 
   Future<void> _simpan(BuildContext context, KetikViewModel viewModel) async {

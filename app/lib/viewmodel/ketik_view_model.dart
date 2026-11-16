@@ -57,6 +57,10 @@ class KetikViewModel extends ChangeNotifier {
 
   bool get canSave => !_isLoading && (_amount ?? 0) > 0 && _categoryId != null;
 
+  /// Opened without signal on a phone that never fetched them: Coba lagi
+  /// fetches the categories instead of saving.
+  bool get isMissingCategories => _categories.isEmpty && _errorMessage != null;
+
   Future<void> loadCategories() async {
     _isLoading = true;
     _errorMessage = null;
