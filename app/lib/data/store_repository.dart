@@ -1,8 +1,9 @@
 import '../model/account.dart';
+import '../model/category.dart';
 import '../model/item.dart';
 import 'api_client.dart';
 
-/// Settings (§6): the store's own fields and its items.
+/// Settings (§6): the store's own fields, its items and its categories.
 class StoreRepository {
   StoreRepository(this._apiClient);
 
@@ -35,6 +36,15 @@ class StoreRepository {
     return [
       for (final itemJson in itemsJson)
         Item.fromJson(itemJson as Map<String, Object?>),
+    ];
+  }
+
+  Future<List<Category>> fetchCategories() async {
+    final body = await _apiClient.get('/categories') as Map<String, Object?>;
+    final categoriesJson = body['categories'] as List<Object?>;
+    return [
+      for (final categoryJson in categoriesJson)
+        Category.fromJson(categoryJson as Map<String, Object?>),
     ];
   }
 
