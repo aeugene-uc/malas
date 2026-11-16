@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/home_repository.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
+import 'package:malas/data/unsent_drafts_store.dart';
 import 'package:malas/viewmodel/beranda_view_model.dart';
 
 void main() {
@@ -43,5 +45,9 @@ void main() {
 BerandaViewModel _buildViewModel(Map<String, Object> bodiesByRoute) {
   final dio = Dio(BaseOptions(baseUrl: 'http://mock'))
     ..httpClientAdapter = MockApiAdapter(bodiesByRoute: bodiesByRoute);
-  return BerandaViewModel(homeRepository: HomeRepository(ApiClient(dio)));
+  FlutterSecureStorage.setMockInitialValues({});
+  return BerandaViewModel(
+    homeRepository: HomeRepository(ApiClient(dio)),
+    unsentDraftsStore: UnsentDraftsStore(const FlutterSecureStorage()),
+  );
 }

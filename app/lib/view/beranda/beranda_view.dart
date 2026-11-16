@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../../data/api_client.dart';
 import '../../data/home_repository.dart';
+import '../../data/unsent_drafts_store.dart';
 import '../../model/home.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/beranda_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
+import '../draft/draft_view.dart';
 import '../format.dart';
 import '../ketik/ketik_view.dart';
 import '../settings/settings_view.dart';
@@ -22,6 +24,7 @@ class BerandaView extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => BerandaViewModel(
         homeRepository: HomeRepository(context.read<ApiClient>()),
+        unsentDraftsStore: context.read<UnsentDraftsStore>(),
       )..load(),
       child: const _BerandaScreen(),
     );
@@ -35,6 +38,7 @@ class _BerandaScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<BerandaViewModel>();
     final home = viewModel.home;
+    if (home != null) _reopenUnsentDrafts(context, viewModel, home);
     return Scaffold(
       appBar: AppBar(title: const _StoreNameTitle()),
       body: Column(
@@ -64,6 +68,30 @@ class _BerandaScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Spec §5.7, #25: drafts kept on the phone after a failed Simpan open again
+/// on the next app open, with Coba lagi and the keys they were sent with.
+void _reopenUnsentDrafts(
+  BuildContext context,
+  BerandaViewModel viewModel,
+  Home home,
+) {
+  final unsentDrafts = viewModel.takeUnsentDrafts();
+  if (unsentDrafts.isEmpty) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted) return;
+    openDraftScreen(
+      context,
+      drafts: [for (final unsent in unsentDrafts) unsent.draft],
+      idempotencyKeys: [
+        for (final unsent in unsentDrafts) unsent.idempotencyKey,
+      ],
+      isUnsent: true,
+      businessToday: home.today.businessDate,
+      onChanged: viewModel.load,
+    );
+  });
 }
 
 class _FirstLoadState extends StatelessWidget {

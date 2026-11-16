@@ -1,14 +1,47 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
+import 'package:malas/data/draft_repository.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
+import 'package:malas/data/unsent_drafts_store.dart';
 import 'package:malas/model/transaction.dart';
 import 'package:malas/view/beranda/beranda_view.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  testWidgets('reopensADraftKeptOnThePhoneWithCobaLagiAndClearsItOnceSaved', (
+    tester,
+  ) async {
+    await _pumpBeranda(
+      tester,
+      mockBodiesByRoute,
+      phoneStorage: _phoneWithAnUnsentDraft(),
+    );
+
+    expect(find.text('Belum tersimpan'), findsOneWidget);
+    expect(find.text('Coba lagi'), findsOneWidget);
+
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tersimpan'), findsOneWidget);
+    expect(
+      await const FlutterSecureStorage().read(
+        key: UnsentDraftsStore.storageKey,
+      ),
+      isNull,
+    );
+
+    // Let the Batal toast run out, so no timer outlives the test.
+    await tester.pump(const Duration(seconds: 11));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('showsTodayComparisonsCardsAndEntries', (tester) async {
     await _pumpBeranda(tester, mockBodiesByRoute);
 
@@ -89,15 +122,37 @@ void main() {
 
 Future<void> _pumpBeranda(
   WidgetTester tester,
-  Map<String, Object> bodiesByRoute,
-) async {
+  Map<String, Object> bodiesByRoute, {
+  Map<String, String> phoneStorage = const {},
+}) async {
+  FlutterSecureStorage.setMockInitialValues(Map.of(phoneStorage));
   final dio = Dio(BaseOptions(baseUrl: 'http://mock'))
     ..httpClientAdapter = MockApiAdapter(bodiesByRoute: bodiesByRoute);
+  final apiClient = ApiClient(dio);
   await tester.pumpWidget(
-    Provider<ApiClient>.value(
-      value: ApiClient(dio),
+    MultiProvider(
+      providers: [
+        Provider<ApiClient>.value(value: apiClient),
+        Provider(create: (_) => DraftRepository(apiClient)),
+        Provider(
+          create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+        ),
+      ],
       child: const MaterialApp(home: BerandaView()),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// A draft from yesterday whose Simpan failed before the app was closed.
+Map<String, String> _phoneWithAnUnsentDraft() {
+  final readBody = mockBodiesByRoute['POST /ai/read']! as Map<String, Object?>;
+  final draft = Map<String, Object?>.of(
+    (readBody['drafts']! as List<Object?>).first! as Map<String, Object?>,
+  )..['businessDate'] = '2026-11-10';
+  return {
+    UnsentDraftsStore.storageKey: jsonEncode([
+      {'draft': draft, 'idempotencyKey': 'key-kept'},
+    ]),
+  };
 }
