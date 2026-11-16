@@ -62,4 +62,25 @@ void main() {
     expect(summary.notCountedInProfit.ambilPribadi, 600000);
     expect(summary.notCountedInProfit.isEmpty, isFalse);
   });
+
+  test('readsTheUncategorisedRowWithNoIdAndTheRowKind', () {
+    final uncategorised = RankedRow.fromJson({
+      'id': null,
+      'name': 'Tanpa kategori',
+      'kind': 'category',
+      'amount': 50000,
+      'share': 0.1,
+    });
+    final gas = RankedRow.fromJson({
+      'id': 'item-3',
+      'name': 'Gas',
+      'kind': 'item',
+      'amount': 750000,
+      'share': 0.14,
+    });
+
+    expect(uncategorised.id, isNull);
+    expect(uncategorised.isItem, isFalse);
+    expect(gas.isItem, isTrue);
+  });
 }

@@ -293,15 +293,18 @@ class _RankedList extends StatelessWidget {
         _SectionTitle(title),
         for (final row in rows)
           ListTile(
-            onTap: () => Navigator.of(context).push(
-              CatatanView.route(
-                FilterFocus(
-                  kind: row.isItem ? FocusKind.item : FocusKind.category,
-                  id: row.id,
-                  name: row.name,
+            onTap: switch (row.id) {
+              null => null,
+              final id => () => Navigator.of(context).push(
+                CatatanView.route(
+                  FilterFocus(
+                    kind: row.isItem ? FocusKind.item : FocusKind.category,
+                    id: id,
+                    name: row.name,
+                  ),
                 ),
               ),
-            ),
+            },
             title: Text(row.name),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
