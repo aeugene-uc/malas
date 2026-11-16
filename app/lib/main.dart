@@ -103,6 +103,10 @@ SessionViewModel _startSession(
     scheduleReminder: scheduleReminder,
   );
   context.read<ApiClient>().onUnauthorized = session.handleUnauthorized;
+  final unsentDraftsStore = context.read<UnsentDraftsStore>();
+  session.addListener(
+    () => unsentDraftsStore.storeId = session.account?.store.id,
+  );
   session.start();
   return session;
 }

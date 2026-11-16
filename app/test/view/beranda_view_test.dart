@@ -135,7 +135,9 @@ Future<void> _pumpBeranda(
         Provider<ApiClient>.value(value: apiClient),
         Provider(create: (_) => DraftRepository(apiClient)),
         Provider(
-          create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+          create: (_) =>
+              UnsentDraftsStore(const FlutterSecureStorage())
+                ..storeId = 'store-1',
         ),
       ],
       child: const MaterialApp(home: BerandaView()),
@@ -152,7 +154,7 @@ Map<String, String> _phoneWithAnUnsentDraft() {
   )..['businessDate'] = '2026-11-10';
   return {
     UnsentDraftsStore.storageKey: jsonEncode([
-      {'draft': draft, 'idempotencyKey': 'key-kept'},
+      {'draft': draft, 'idempotencyKey': 'key-kept', 'storeId': 'store-1'},
     ]),
   };
 }

@@ -92,7 +92,7 @@ void main() {
 
   test('aChangedAmountForgetsTheFailedOneKeptOnThePhone', () async {
     FlutterSecureStorage.setMockInitialValues({});
-    final store = UnsentDraftsStore(const FlutterSecureStorage());
+    final store = UnsentDraftsStore(const FlutterSecureStorage())..storeId = 'store-1';
     final apiClient = ApiClient(
       Dio(BaseOptions(baseUrl: 'http://mock'))..httpClientAdapter = adapter,
     );
@@ -135,7 +135,7 @@ void main() {
         apiClient,
         secureStorage: secureStorage,
       );
-      store = UnsentDraftsStore(secureStorage);
+      store = UnsentDraftsStore(secureStorage)..storeId = 'store-1';
       offlineViewModel = KetikViewModel(
         storeRepository: storeRepository,
         draftRepository: DraftRepository(apiClient),

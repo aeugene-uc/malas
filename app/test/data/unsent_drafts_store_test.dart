@@ -9,7 +9,8 @@ void main() {
 
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
-    store = UnsentDraftsStore(const FlutterSecureStorage());
+    store = UnsentDraftsStore(const FlutterSecureStorage())
+      ..storeId = 'store-1';
   });
 
   test('readsBackKeptDraftsWithTheirKeysAndDate', () async {
@@ -59,6 +60,34 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('anotherStoresDraftNeverComesBackOnASharedPhone', () async {
+    await store.keep([_unsent('key-p1', total: 50000)]);
+
+    store.storeId = 'store-2';
+    expect(await store.load(), isEmpty);
+
+    store.storeId = null;
+    expect(await store.load(), isEmpty);
+
+    store.storeId = 'store-1';
+    expect([for (final unsent in await store.load()) unsent.idempotencyKey], [
+      'key-p1',
+    ]);
+  });
+
+  test('changingOneStoresDraftsLeavesTheOtherStoresAlone', () async {
+    await store.keep([_unsent('key-p1', total: 50000)]);
+    store.storeId = 'store-2';
+    await store.keep([_unsent('key-p2', total: 60000)]);
+
+    await store.forget(['key-p2']);
+
+    store.storeId = 'store-1';
+    expect([for (final unsent in await store.load()) unsent.idempotencyKey], [
+      'key-p1',
+    ]);
   });
 
   test('aForgetAndAKeepStartedTogetherBothLand', () async {

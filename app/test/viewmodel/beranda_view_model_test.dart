@@ -48,6 +48,7 @@ BerandaViewModel _buildViewModel(Map<String, Object> bodiesByRoute) {
   FlutterSecureStorage.setMockInitialValues({});
   return BerandaViewModel(
     homeRepository: HomeRepository(ApiClient(dio)),
-    unsentDraftsStore: UnsentDraftsStore(const FlutterSecureStorage()),
+    unsentDraftsStore: UnsentDraftsStore(const FlutterSecureStorage())
+      ..storeId = 'store-1',
   );
 }

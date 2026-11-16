@@ -114,7 +114,8 @@ void main() {
 
     setUp(() {
       FlutterSecureStorage.setMockInitialValues({});
-      store = UnsentDraftsStore(const FlutterSecureStorage());
+      store = UnsentDraftsStore(const FlutterSecureStorage())
+        ..storeId = 'store-1';
     });
 
     test('aFailedSimpanKeepsTheUnsavedDraftsWithTheirKeysAndDay', () async {

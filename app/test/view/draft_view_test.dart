@@ -146,7 +146,9 @@ Future<void> _openDraftFromHost(
       providers: [
         Provider(create: (_) => DraftRepository(ApiClient(dio))),
         Provider(
-          create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+          create: (_) =>
+              UnsentDraftsStore(const FlutterSecureStorage())
+                ..storeId = 'store-1',
         ),
       ],
       child: MaterialApp(

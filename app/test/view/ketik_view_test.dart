@@ -27,7 +27,9 @@ void main() {
           Provider(create: (_) => StoreRepository(apiClient)),
           Provider(create: (_) => DraftRepository(apiClient)),
           Provider(
-            create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+            create: (_) =>
+                UnsentDraftsStore(const FlutterSecureStorage())
+                  ..storeId = 'store-1',
           ),
         ],
         child: MaterialApp(
@@ -77,7 +79,9 @@ void main() {
           Provider(create: (_) => StoreRepository(apiClient)),
           Provider(create: (_) => DraftRepository(apiClient)),
           Provider(
-            create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+            create: (_) =>
+                UnsentDraftsStore(const FlutterSecureStorage())
+                  ..storeId = 'store-1',
           ),
         ],
         child: MaterialApp(
