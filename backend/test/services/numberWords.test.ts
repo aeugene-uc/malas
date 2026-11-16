@@ -73,6 +73,23 @@ test("mapsUnitAliasesToSpecUnits", () => {
   assert.deepEqual(parseQuantity("tiga biji"), { quantity: "3", unit: "pcs" });
 });
 
+test("convertsGramsMillilitresDozensAndFractions", () => {
+  assert.deepEqual(parseQuantity("250 gram"), { quantity: "0.25", unit: "kg" });
+  assert.deepEqual(parseQuantity("500ml"), { quantity: "0.5", unit: "liter" });
+  assert.deepEqual(parseQuantity("1 L"), { quantity: "1", unit: "liter" });
+  assert.deepEqual(parseQuantity("2 lusin"), { quantity: "24", unit: "pcs" });
+  assert.deepEqual(parseQuantity("1/2 kg"), { quantity: "0.5", unit: "kg" });
+  assert.equal(parseQuantity("1/3 kg"), null);
+});
+
+test("keepsTheNumberWhenTheUnitIsNotInTheList", () => {
+  for (const text of ["2 bungkus", "2 dus", "1 bks", "2 btl", "tiga gelas"]) {
+    assert.equal(parseQuantity(text)?.unit, null, text);
+  }
+  assert.deepEqual(parseQuantity("2 bungkus"), { quantity: "2", unit: null });
+  assert.deepEqual(parseQuantity("tiga gelas"), { quantity: "3", unit: null });
+});
+
 test("returnsNullForZeroOrUnknownQuantity", () => {
   assert.equal(parseQuantity("0 kg"), null);
   assert.equal(parseQuantity("banyak"), null);

@@ -65,10 +65,16 @@ const unitByWord: Record<string, { unit: Unit; factor: number }> = {
   pcs: { unit: "pcs", factor: 1_000 },
   biji: { unit: "pcs", factor: 1_000 },
   buah: { unit: "pcs", factor: 1_000 },
+  lusin: { unit: "pcs", factor: 12_000 },
   kg: { unit: "kg", factor: 1_000 },
   kilo: { unit: "kg", factor: 1_000 },
   ons: { unit: "kg", factor: 100 },
+  gram: { unit: "kg", factor: 1 },
+  gr: { unit: "kg", factor: 1 },
+  g: { unit: "kg", factor: 1 },
   liter: { unit: "liter", factor: 1_000 },
+  l: { unit: "liter", factor: 1_000 },
+  ml: { unit: "liter", factor: 1 },
   lembar: { unit: "lembar", factor: 1_000 },
   jam: { unit: "jam", factor: 1_000 },
   malam: { unit: "malam", factor: 1_000 },
@@ -128,7 +134,7 @@ export function parseQuantity(text: string): Quantity | null {
   const lastWord = words.at(-1) ?? "";
   const unitMatch = unitByWord[lastWord] ?? matchSePrefixedUnit(lastWord);
   if (unitMatch === undefined) {
-    return toQuantity(parseWords(words), null, SCALE);
+    return toQuantity(parseWords(words), null, SCALE) ?? readQuantityWithOtherUnit(words);
   }
   const numberWords = words.slice(0, -1);
   const value = lastWord in unitByWord ? parseWords(numberWords) : numberWords.length === 0 ? SCALE : null;
@@ -144,6 +150,16 @@ function toQuantity(value: Thousandths | null, unit: Unit | null, factor: number
     return null;
   }
   return { quantity: formatThousandths(inUnit), unit };
+}
+
+// "2 bungkus" or "1 btl": the unit is not in §4.1, but the number is still the
+// quantity, so it is kept without a unit rather than lost.
+function readQuantityWithOtherUnit(words: string[]): Quantity | null {
+  const lastWord = words.at(-1) ?? "";
+  if (words.length < 2 || !/^[a-z]+\.?$/.test(lastWord)) {
+    return null;
+  }
+  return toQuantity(parseWords(words.slice(0, -1)), null, SCALE);
 }
 
 // "sekilo" is one kilo.
@@ -206,6 +222,10 @@ function toThousandths(value: number | undefined): Thousandths | null {
 // Indonesian writing: "25.000" is twenty-five thousand and "1,2" is one point
 // two. A dot is a thousands separator only before groups of exactly 3 digits.
 function parseDigits(word: string): Thousandths | null {
+  const fractionMatch = /^(\d+)\/(\d+)$/.exec(word);
+  if (fractionMatch !== null) {
+    return parseFraction(Number(fractionMatch[1]), Number(fractionMatch[2]));
+  }
   const thousandsSeparated = /^\d{1,3}(\.\d{3})+$/.test(word);
   const normalised = thousandsSeparated ? word.replaceAll(".", "") : word.replace(",", ".");
   const match = /^(\d+)(?:\.(\d{1,3}))?$/.exec(normalised);
@@ -215,6 +235,12 @@ function parseDigits(word: string): Thousandths | null {
   const whole = Number(match[1]);
   const fraction = Number((match[2] ?? "").padEnd(3, "0"));
   return whole * SCALE + fraction;
+}
+
+// "1/2 kg". A fraction that is not exact in thousandths ("1/3") is unclear.
+function parseFraction(numerator: number, denominator: number): Thousandths | null {
+  const value = (numerator * SCALE) / denominator;
+  return denominator === 0 || !Number.isInteger(value) ? null : value;
 }
 
 function formatThousandths(value: Thousandths): string {
