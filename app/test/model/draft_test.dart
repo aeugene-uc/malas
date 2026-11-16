@@ -31,6 +31,25 @@ void main() {
     expect(draft.toJson()['businessDate'], '2026-11-10');
   });
 
+  test('sendsTheReturLinkBackOnSimpan', () {
+    final retur = Draft.fromJson(const {
+      'direction': 'IN',
+      'total': -30000,
+      'personId': null,
+      'personName': null,
+      'dueDate': null,
+      'source': 'TYPED',
+      'inputId': null,
+      'note': null,
+      'linkedTransactionId': 'trx-1',
+      'lines': <Object?>[],
+      'payments': <Object?>[],
+    });
+
+    expect(retur.toJson()['linkedTransactionId'], 'trx-1');
+    expect(readMock().drafts.first.toJson()['linkedTransactionId'], isNull);
+  });
+
   test('dropsTheCategoryHintFromTheSaveBody', () {
     final line = DraftLine.fromJson(const {
       'itemId': null,

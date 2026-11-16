@@ -73,6 +73,7 @@ class Draft {
     required this.note,
     required this.lines,
     required this.payments,
+    this.linkedTransactionId,
   });
 
   factory Draft.fromJson(Map<String, Object?> json) {
@@ -96,6 +97,7 @@ class Draft {
         for (final paymentJson in paymentsJson)
           DraftPayment.fromJson(paymentJson as Map<String, Object?>),
       ],
+      linkedTransactionId: json['linkedTransactionId'] as String?,
     );
   }
 
@@ -112,6 +114,10 @@ class Draft {
   String? note;
   final List<DraftLine> lines;
   final List<DraftPayment> payments;
+
+  /// The entry a Retur (or a loan payment) belongs to (spec §4.2). Without it
+  /// the server would save a Retur as a separate, unrelated entry.
+  final String? linkedTransactionId;
 
   /// Moves the draft to another day. A payment made on the draft's old day
   /// moves with it, since "paid in full" means paid on the sale's own day.
@@ -151,6 +157,7 @@ class Draft {
       'note': note,
       'lines': [for (final line in lines) line.toJson()],
       'payments': [for (final payment in payments) payment.toJson()],
+      'linkedTransactionId': linkedTransactionId,
     };
   }
 }
