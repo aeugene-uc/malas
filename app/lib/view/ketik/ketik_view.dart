@@ -8,6 +8,7 @@ import '../../model/transaction.dart';
 import '../../viewmodel/draft_view_model.dart';
 import '../../viewmodel/ketik_view_model.dart';
 import '../draft/draft_view.dart';
+import '../format.dart';
 
 /// Opens Ketik. A saved amount shows the Batal toast on the caller's screen,
 /// and [onChanged] runs after the save and after a Batal.
@@ -59,6 +60,7 @@ class KetikView extends StatelessWidget {
           TextField(
             autofocus: true,
             keyboardType: TextInputType.number,
+            inputFormatters: [RupiahInputFormatter()],
             style: Theme.of(context).textTheme.headlineSmall,
             decoration: const InputDecoration(
               labelText: 'Jumlah',

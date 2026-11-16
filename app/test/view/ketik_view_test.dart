@@ -57,8 +57,11 @@ void main() {
       isNull,
     );
 
-    await tester.enterText(find.byType(TextField), '1.200.000');
+    await tester.enterText(find.byType(TextField), '1200000');
     await tester.pump();
+
+    expect(find.text('1.200.000'), findsOneWidget);
+
     await tester.tap(find.text('Simpan'));
     await tester.pumpAndSettle();
 

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/view/format.dart';
 
@@ -16,6 +17,40 @@ void main() {
 
     test('putsTheMinusBeforeRp', () {
       expect(formatRupiah(-60000), '-Rp 60.000');
+    });
+  });
+
+  group('RupiahInputFormatter', () {
+    TextEditingValue typed(String text, {int? cursor}) {
+      return RupiahInputFormatter().formatEditUpdate(
+        TextEditingValue.empty,
+        TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: cursor ?? text.length),
+        ),
+      );
+    }
+
+    test('putsTheDotsInAsTheOwnerTypes', () {
+      expect(typed('1200000').text, '1.200.000');
+      expect(typed('1200000').selection.end, 9);
+      expect(typed('1.200.0005').text, '12.000.005');
+      expect(typed('500').text, '500');
+      expect(typed('').text, '');
+    });
+
+    test('keepsTheCursorAfterTheSameDigit', () {
+      // A 5 typed after the 1 of "1.200".
+      final value = typed('15.200', cursor: 2);
+
+      expect(value.text, '15.200');
+      expect(value.selection.end, 2);
+
+      // A 9 typed after "99" of "999" grows a dot before the cursor.
+      final grown = typed('9999', cursor: 3);
+
+      expect(grown.text, '9.999');
+      expect(grown.selection.end, 4);
     });
   });
 
