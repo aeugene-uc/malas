@@ -47,6 +47,18 @@ void main() {
     expect(find.byType(BerandaView), findsOneWidget);
   });
 
+  testWidgets('jamPengingatOpensTheTimePickerInIndonesian', (tester) async {
+    await openSettings(tester);
+
+    await tester.ensureVisible(find.text('Jam pengingat'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jam pengingat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Batal'), findsOneWidget);
+    expect(find.text('Cancel'), findsNothing);
+  });
+
   testWidgets('barangDanSatuanListsTheItems', (tester) async {
     await openSettings(tester);
 

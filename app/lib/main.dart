@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 
@@ -87,6 +88,10 @@ class MalasApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         ),
+        // Indonesian only, so Flutter's own pickers, menus and screen-reader
+        // labels match the app's words on any phone (F11, #26).
+        supportedLocales: const [Locale('id')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         home: const SessionGate(),
       ),
     );
