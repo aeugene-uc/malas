@@ -10,14 +10,17 @@ import { StoreQueries } from "../../src/services/tanyaQueries.js";
 import * as transactionService from "../../src/services/transactionService.js";
 import type { SaveRequest } from "../../src/services/transactionService.js";
 
-// S11 part 2: what Simpan (S5) saves, read back the way Beranda, Analisis,
-// Piutang/Utang and the alerts show it. savePath.ts tests the route itself;
-// this tests that §10's figures follow from a real save. Needs a database, so
-// it runs with `npm run test:db`. It seeds one owner and deletes it afterwards.
+// S11 part 2: what Simpan (S5) and Catatan (S6) save, read back the way
+// Beranda, Analisis, Piutang/Utang and the alerts show it. savePath.ts and
+// catatan.ts test the routes themselves; this tests that §10's figures follow
+// from real saves, edits and returs. Needs a database, so it runs with
+// `npm run test:db`. Its owners are deleted afterwards.
 
 type Owner = { userId: string; storeId: string; bahanId: string };
 
 let owner: Owner;
+// Owners made by single tests, for cases that would change the day above.
+const extraOwners: Owner[] = [];
 let today = "";
 const quickAmountKey = randomUUID();
 let bonId = "";
@@ -29,7 +32,8 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.deleteMany({ where: { id: owner?.userId ?? "" } });
+  const userIds = [owner, ...extraOwners].filter((seeded) => seeded !== undefined).map((seeded) => seeded.userId);
+  await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   await prisma.$disconnect();
 });
 
@@ -94,6 +98,57 @@ test("givesAnalisisAndTanyaTheSameTotalsForSavedEntries", async () => {
   assert.deepEqual([summary.masuk, summary.keluar], [totals.masuk, totals.keluar]);
 });
 
+test("showsAnEditBelowWhatWasPaidAsKembalikanOnBeranda", async () => {
+  const shop = await createExtraOwner("S11 Edit");
+  const bon = await saveEntry(shop, request({ direction: "IN", total: 100_000, personName: "Bu Ani", lines: [{ lineTotal: 100_000 }], payments: [] }));
+  await transactionService.pay({ storeId: shop.storeId, transactionId: bon, amount: 80_000, date: null, label: null });
+  // The owner finds the bon was only 60.000: Bu Ani is owed 20.000 back.
+  await transactionService.edit({
+    storeId: shop.storeId,
+    transactionId: bon,
+    request: request({ direction: "IN", total: 60_000, personName: "Bu Ani", lines: [{ lineTotal: 60_000 }], payments: [] }),
+  });
+  const home = await getHome(shop.storeId);
+  assert.deepEqual([home.today.masuk, home.cards.piutang, home.cards.utang], [80_000, null, 20_000]);
+  assert.deepEqual(await new StoreQueries(shop.storeId, []).openBalances("UTANG"), { rows: [{ personName: "Bu Ani", remaining: 20_000 }], total: 20_000 });
+});
+
+test("lowersPiutangForAReturOnABonWithoutTouchingMasuk", async () => {
+  const shop = await createExtraOwner("S11 Retur bon");
+  const bon = await saveEntry(
+    shop,
+    request({ direction: "IN", total: 100_000, personName: "Pak Budi", lines: [{ itemName: "Beras", quantity: "10", unit: "kg", unitPrice: 10_000, lineTotal: 100_000 }], payments: [] }),
+  );
+  // Pak Budi brings back 4 kg of the 10.
+  await saveEntry(shop, {
+    ...request({ direction: "IN", total: -40_000, lines: [{ itemName: "Beras", quantity: "-4", unit: "kg", unitPrice: 10_000, lineTotal: -40_000 }], payments: [] }),
+    linkedTransactionId: bon,
+  });
+  const home = await getHome(shop.storeId);
+  assert.deepEqual([home.today.masuk, home.cards.piutang], [0, 60_000]);
+  const sales = await getRankedRows(shop.storeId, { period: "minggu", start: today, direction: "IN", mode: "item" });
+  assert.deepEqual(sales.map((row) => [row.name, row.amount]), [["Beras", 60_000]]);
+});
+
+test("takesACashReturOffThatDaysMasukAndTheItemsSales", async () => {
+  const shop = await createExtraOwner("S11 Retur tunai");
+  const sale = await saveEntry(
+    shop,
+    request({ direction: "IN", total: 100_000, lines: [{ itemName: "Kaos", quantity: "2", unit: "pcs", unitPrice: 50_000, lineTotal: 100_000 }], payments: [{ date: today, amount: 100_000, label: "cash" }] }),
+  );
+  await saveEntry(shop, {
+    ...request({ direction: "IN", total: -50_000, lines: [{ itemName: "Kaos", quantity: "-1", unit: "pcs", unitPrice: 50_000, lineTotal: -50_000 }], payments: [] }),
+    linkedTransactionId: sale,
+  });
+  const home = await getHome(shop.storeId);
+  assert.equal(home.today.masuk, 50_000);
+  assert.equal(home.entries.find((entry) => entry.id === sale)?.hasRetur, true);
+  const summary = await getSummary(shop.storeId, "minggu", today);
+  const sales = await getRankedRows(shop.storeId, { period: "minggu", start: today, direction: "IN", mode: "item" });
+  assert.equal(summary.masuk, 50_000);
+  assert.deepEqual(sales.map((row) => [row.name, row.amount]), [["Kaos", 50_000]]);
+});
+
 // ---- Seed, through Simpan ----------------------------------------------------
 
 async function saveTheDay(): Promise<void> {
@@ -147,6 +202,17 @@ async function saveTheDay(): Promise<void> {
       bonId = saved.transaction.id;
     }
   }
+}
+
+async function createExtraOwner(name: string): Promise<Owner> {
+  const extra = await createOwner(name);
+  extraOwners.push(extra);
+  return extra;
+}
+
+async function saveEntry(shop: Owner, saveRequest: SaveRequest): Promise<string> {
+  const saved = await transactionService.save({ storeId: shop.storeId, request: saveRequest, idempotencyKey: randomUUID() });
+  return saved.transaction.id;
 }
 
 // Ketik's quick amount (§8.3): one bare line, paid in full, no date sent.
