@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/**/*.test.ts",
+    "test:db": "node --env-file=.env --import tsx --test test/db/*.ts",
     "prisma": "prisma"
   },
   "dependencies": {
