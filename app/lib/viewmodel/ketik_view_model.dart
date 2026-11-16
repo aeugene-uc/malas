@@ -154,12 +154,15 @@ class KetikViewModel extends ChangeNotifier {
     if (dropped != null) unawaited(dropped.forgetUnsent());
   }
 
-  /// Sales for money in. For money out, the first expense category the store
-  /// has, which is Barang dagangan in the fixed list.
+  /// Picked by name, not position: the server sorts categories by name, which
+  /// put Ambil pribadi, not counted in profit (§4.2), first for Keluar.
   String? _defaultCategoryId() {
     final candidates = categoriesForDirection;
     if (candidates.isEmpty) return null;
-    final penjualan = candidates.where((c) => c.name == 'Penjualan');
-    return (penjualan.isEmpty ? candidates.first : penjualan.first).id;
+    final defaultName = _direction == Direction.masuk
+        ? 'Penjualan'
+        : 'Barang dagangan';
+    final named = candidates.where((c) => c.name == defaultName);
+    return (named.isEmpty ? candidates.first : named.first).id;
   }
 }

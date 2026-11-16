@@ -47,6 +47,35 @@ void main() {
     expect(viewModel.categoryId, isNot('cat-1'));
   });
 
+  test('defaultsToPenjualanAndBarangDaganganInTheServersNameOrder', () async {
+    final categoriesBody =
+        mockBodiesByRoute['GET /categories']! as Map<String, Object?>;
+    final categoriesByName = [...categoriesBody['categories']! as List<Object?>]
+      ..sort((a, b) => _nameOf(a).compareTo(_nameOf(b)));
+    final apiClient = ApiClient(
+      Dio(BaseOptions(baseUrl: 'http://mock'))
+        ..httpClientAdapter = MockApiAdapter(
+          bodiesByRoute: {
+            ...mockBodiesByRoute,
+            'GET /categories': {'categories': categoriesByName},
+          },
+        ),
+    );
+    final sortedViewModel = KetikViewModel(
+      storeRepository: StoreRepository(apiClient),
+      draftRepository: DraftRepository(apiClient),
+      businessToday: '2026-11-16',
+    );
+    await sortedViewModel.loadCategories();
+
+    expect(sortedViewModel.categoryId, 'cat-1');
+
+    sortedViewModel.selectDirection(Direction.keluar);
+
+    expect(sortedViewModel.categoriesForDirection.first.name, 'Ambil pribadi');
+    expect(sortedViewModel.categoryId, 'cat-fixed-3');
+  });
+
   test('buildsOneBareAmountLinePaidInFullToday', () {
     viewModel.setAmount(1200000);
 
@@ -180,6 +209,9 @@ void main() {
     });
   });
 }
+
+String _nameOf(Object? categoryJson) =>
+    (categoryJson! as Map<String, Object?>)['name']! as String;
 
 class _KeyRecordingAdapter implements HttpClientAdapter {
   final MockApiAdapter _mock = MockApiAdapter(bodiesByRoute: mockBodiesByRoute);
