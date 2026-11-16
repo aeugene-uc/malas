@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/draft_repository.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/data/store_repository.dart';
+import 'package:malas/data/unsent_drafts_store.dart';
 import 'package:malas/view/ketik/ketik_view.dart';
 import 'package:provider/provider.dart';
 
@@ -16,11 +18,15 @@ void main() {
       Dio(BaseOptions(baseUrl: 'http://mock'))
         ..httpClientAdapter = MockApiAdapter(bodiesByRoute: mockBodiesByRoute),
     );
+    FlutterSecureStorage.setMockInitialValues({});
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           Provider(create: (_) => StoreRepository(apiClient)),
           Provider(create: (_) => DraftRepository(apiClient)),
+          Provider(
+            create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+          ),
         ],
         child: MaterialApp(
           home: Scaffold(

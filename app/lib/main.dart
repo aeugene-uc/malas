@@ -8,6 +8,7 @@ import 'data/auth_repository.dart';
 import 'data/draft_repository.dart';
 import 'data/reminder_scheduler.dart';
 import 'data/store_repository.dart';
+import 'data/unsent_drafts_store.dart';
 import 'model/account.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
@@ -68,6 +69,9 @@ class MalasApp extends StatelessWidget {
         ),
         Provider(create: (_) => StoreRepository(apiClient)),
         Provider(create: (_) => DraftRepository(apiClient)),
+        Provider(
+          create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+        ),
         ChangeNotifierProvider(
           create: (context) => _startSession(context, scheduleReminder),
         ),

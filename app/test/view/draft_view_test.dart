@@ -2,9 +2,11 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/draft_repository.dart';
+import 'package:malas/data/unsent_drafts_store.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/model/draft.dart';
@@ -106,9 +108,15 @@ Future<void> _openDraftFromHost(
   final readResult = AiReadResult.fromJson(
     mockBodiesByRoute['POST /ai/read']! as Map<String, Object?>,
   );
+  FlutterSecureStorage.setMockInitialValues({});
   await tester.pumpWidget(
-    Provider(
-      create: (_) => DraftRepository(ApiClient(dio)),
+    MultiProvider(
+      providers: [
+        Provider(create: (_) => DraftRepository(ApiClient(dio))),
+        Provider(
+          create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),
+        ),
+      ],
       child: MaterialApp(
         home: Scaffold(
           body: Builder(

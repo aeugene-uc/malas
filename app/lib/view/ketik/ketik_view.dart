@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/draft_repository.dart';
 import '../../data/store_repository.dart';
+import '../../data/unsent_drafts_store.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/draft_view_model.dart';
 import '../../viewmodel/ketik_view_model.dart';
@@ -22,6 +23,7 @@ Future<void> openKetik(
           storeRepository: routeContext.read<StoreRepository>(),
           draftRepository: routeContext.read<DraftRepository>(),
           businessToday: businessToday,
+          unsentDraftsStore: routeContext.read<UnsentDraftsStore>(),
         )..loadCategories(),
         child: const KetikView(),
       ),

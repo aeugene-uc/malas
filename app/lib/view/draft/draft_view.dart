@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/draft_repository.dart';
+import '../../data/unsent_drafts_store.dart';
 import '../../model/draft.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/draft_view_model.dart';
@@ -10,19 +11,25 @@ import '../format.dart';
 /// Opens the draft screen for what a read (Bicara, Foto) or Ketik produced.
 /// After Simpan it shows the 10-second Batal toast (spec §5.2) on the
 /// caller's screen. [onChanged] runs after a save and after a Batal, so the
-/// caller can reload what it shows.
+/// caller can reload what it shows. [idempotencyKeys] and [isUnsent] reopen
+/// drafts kept on the phone after a failed Simpan (#25).
 Future<void> openDraftScreen(
   BuildContext context, {
   required List<Draft> drafts,
   List<ReadWarning> warnings = const [],
   required String businessToday,
   required VoidCallback onChanged,
+  List<String>? idempotencyKeys,
+  bool isUnsent = false,
 }) async {
   final viewModel = DraftViewModel(
     draftRepository: context.read<DraftRepository>(),
     businessToday: businessToday,
     drafts: drafts,
     warnings: warnings,
+    unsentDraftsStore: context.read<UnsentDraftsStore>(),
+    idempotencyKeys: idempotencyKeys,
+    isUnsent: isUnsent,
   );
   final isSaved = await Navigator.of(context).push<bool>(
     MaterialPageRoute(

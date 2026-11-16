@@ -1,9 +1,12 @@
+import 'dart:async';
+
 // Flutter's foundation has its own Category annotation.
 import 'package:flutter/foundation.dart' hide Category;
 
 import '../data/api_client.dart';
 import '../data/draft_repository.dart';
 import '../data/store_repository.dart';
+import '../data/unsent_drafts_store.dart';
 import '../model/category.dart';
 import '../model/draft.dart';
 import '../model/transaction.dart';
@@ -16,11 +19,15 @@ class KetikViewModel extends ChangeNotifier {
     required this._storeRepository,
     required this._draftRepository,
     required this._businessToday,
+    this._unsentDraftsStore,
   });
 
   final StoreRepository _storeRepository;
   final DraftRepository _draftRepository;
   final String _businessToday;
+
+  /// Keeps a failed save on the phone (#25). Null when it need not be kept.
+  final UnsentDraftsStore? _unsentDraftsStore;
 
   List<Category> _categories = const [];
   Direction _direction = Direction.masuk;
@@ -69,19 +76,19 @@ class KetikViewModel extends ChangeNotifier {
     if (direction == _direction) return;
     _direction = direction;
     _categoryId = _defaultCategoryId();
-    _pendingSave = null;
+    _dropPendingSave();
     notifyListeners();
   }
 
   void setAmount(int? amount) {
     _amount = amount;
-    _pendingSave = null;
+    _dropPendingSave();
     notifyListeners();
   }
 
   void selectCategory(String categoryId) {
     _categoryId = categoryId;
-    _pendingSave = null;
+    _dropPendingSave();
     notifyListeners();
   }
 
@@ -91,6 +98,7 @@ class KetikViewModel extends ChangeNotifier {
       draftRepository: _draftRepository,
       businessToday: _businessToday,
       drafts: [buildDraft()],
+      unsentDraftsStore: _unsentDraftsStore,
     );
     _isLoading = true;
     _errorMessage = null;
@@ -132,6 +140,14 @@ class KetikViewModel extends ChangeNotifier {
         DraftPayment(date: _businessToday, amount: amount, label: 'cash'),
       ],
     );
+  }
+
+  /// A changed entry is a different save with a new key, so the failed one
+  /// kept on the phone goes too. Otherwise the next open would offer both.
+  void _dropPendingSave() {
+    final dropped = _pendingSave;
+    _pendingSave = null;
+    if (dropped != null) unawaited(dropped.forgetUnsent());
   }
 
   /// Sales for money in. For money out, the first expense category the store

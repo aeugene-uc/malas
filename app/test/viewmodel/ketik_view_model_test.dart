@@ -1,12 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/draft_repository.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/data/store_repository.dart';
+import 'package:malas/data/unsent_drafts_store.dart';
 import 'package:malas/model/transaction.dart';
 import 'package:malas/viewmodel/ketik_view_model.dart';
 
@@ -86,6 +88,36 @@ void main() {
 
     expect(adapter.saveKeys[2], isNot(adapter.saveKeys[0]));
     expect(viewModel.savedDraft, isNotNull);
+  });
+
+  test('aChangedAmountForgetsTheFailedOneKeptOnThePhone', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final store = UnsentDraftsStore(const FlutterSecureStorage());
+    final apiClient = ApiClient(
+      Dio(BaseOptions(baseUrl: 'http://mock'))..httpClientAdapter = adapter,
+    );
+    final keptViewModel = KetikViewModel(
+      storeRepository: StoreRepository(apiClient),
+      draftRepository: DraftRepository(apiClient),
+      businessToday: '2026-11-16',
+      unsentDraftsStore: store,
+    );
+    await keptViewModel.loadCategories();
+    adapter.isSaveFailing = true;
+
+    keptViewModel.setAmount(50000);
+    await keptViewModel.simpan();
+
+    expect([for (final unsent in await store.load()) unsent.draft.total], [
+      50000,
+    ]);
+
+    keptViewModel.setAmount(60000);
+    await keptViewModel.simpan();
+
+    expect([for (final unsent in await store.load()) unsent.draft.total], [
+      60000,
+    ]);
   });
 }
 
