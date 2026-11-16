@@ -9,6 +9,7 @@ export const TRANSACTION_ROW_SELECT = {
   businessDate: true,
   direction: true,
   total: true,
+  dueDate: true,
   person: { select: { id: true, name: true } },
   payments: { select: { amount: true } },
   lines: {
@@ -35,6 +36,7 @@ export type TransactionRow = {
   businessDate: string;
   direction: "IN" | "OUT";
   total: number;
+  dueDate: string | null;
   paid: number;
   remaining: number;
   editCount: number;
@@ -59,6 +61,7 @@ export function toTransactionRow(transaction: TransactionForRow): TransactionRow
     businessDate: transaction.businessDate.toISOString().slice(0, 10),
     direction: transaction.direction,
     total: transaction.total,
+    dueDate: transaction.dueDate?.toISOString().slice(0, 10) ?? null,
     paid,
     remaining: transaction.total - paid,
     editCount: transaction._count.edits,
