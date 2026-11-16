@@ -41,6 +41,26 @@ void main() {
     expect(find.text('Belum lunas Rp 30.000'), findsOneWidget);
   });
 
+  testWidgets('clearingTheSearchShowsEveryEntryAgain', (tester) async {
+    await openCatatan(tester);
+
+    await tester.enterText(find.byType(TextField), 'gas');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(find.text('Pak Budi'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+    expect(find.text('Pak Budi'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'gas');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hapus pencarian'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pak Budi'), findsOneWidget);
+  });
+
   testWidgets('swipingAnEntryAwayOffersBatal', (tester) async {
     await openCatatan(tester);
 

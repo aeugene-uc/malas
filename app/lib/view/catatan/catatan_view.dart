@@ -73,9 +73,27 @@ class _CatatanScreenState extends State<_CatatanScreen> {
               controller: _searchController,
               textInputAction: TextInputAction.search,
               onSubmitted: viewModel.search,
-              decoration: const InputDecoration(
+              // Emptying the field shows everything again, without needing
+              // the search key.
+              onChanged: (text) {
+                if (text.trim().isEmpty) viewModel.search('');
+              },
+              decoration: InputDecoration(
                 labelText: 'Cari',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: ValueListenableBuilder(
+                  valueListenable: _searchController,
+                  builder: (context, value, _) => value.text.isEmpty
+                      ? const SizedBox.shrink()
+                      : IconButton(
+                          tooltip: 'Hapus pencarian',
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _searchController.clear();
+                            viewModel.search('');
+                          },
+                        ),
+                ),
               ),
             ),
           ),
