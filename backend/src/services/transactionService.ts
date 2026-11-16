@@ -101,6 +101,58 @@ type PendingLine = {
 };
 
 async function writeTransaction(tx: Tx, storeId: string, request: SaveRequest): Promise<SaveResponse> {
+  const entry = await prepareEntry(tx, { storeId, request, editingId: null });
+  const original = await findReturOriginal(tx, { storeId, request });
+  const returPlan = original === null ? null : saveRules.planRetur({ refund: -entry.total, openOnOriginal: original.total - sumAmounts(original.payments) });
+  // §4.2: a retur's money is worked out by code, so the client's payments are
+  // not used. The part that cancels an open balance is a matching pair of
+  // payments that moves no cash; the rest is cash given back today.
+  const payments = returPlan === null ? request.payments : [{ date: entry.businessDate, amount: entry.total, label: RETUR_LABEL }];
+
+  const created = await tx.transaction.create({
+    data: {
+      storeId,
+      businessDate: toDbDate(entry.businessDate),
+      direction: request.direction,
+      total: entry.total,
+      personId: entry.personId,
+      dueDate: request.dueDate === null ? null : toDbDate(request.dueDate),
+      linkedTransactionId: request.linkedTransactionId,
+      source: request.source,
+      inputId: request.inputId,
+      note: request.note,
+      payments: { create: payments.map((payment) => ({ date: toDbDate(payment.date), amount: payment.amount, label: payment.label })) },
+    },
+  });
+  if (original !== null && returPlan !== null && returPlan.settledAgainstOriginal > 0) {
+    await tx.payment.create({ data: { transactionId: original.id, date: toDbDate(entry.businessDate), amount: returPlan.settledAgainstOriginal, label: RETUR_LABEL } });
+  }
+  await openLoanUtang(tx, { storeId, transactionId: created.id, request, entry });
+
+  const { warnings, newLineIds } = await writeLines(tx, { transactionId: created.id, entry });
+  if (entry.duplicateId !== null) warnings.push(buildWarning("DUPLICATE_SUSPECTED", { transactionId: entry.duplicateId }));
+  if (entry.isLumpSumMix) warnings.push(buildWarning("LUMP_SUM_WITH_ITEMISED", { transactionId: created.id }));
+  if (returPlan === null && saveRules.isOverpaid(entry.total, request.payments)) warnings.push(buildWarning("OVERPAID", { transactionId: created.id }));
+  return { transaction: await readSavedRow(tx, { transactionId: created.id, newLineIds }), warnings };
+}
+
+const RETUR_LABEL = "retur";
+
+// What Simpan and an edit both work out before writing: the date, the person,
+// every line with its money, the total and the soft warnings that need a query.
+type Entry = {
+  businessDate: string;
+  total: number;
+  personId: string | null;
+  linesToSave: PendingLine[];
+  hasTotalGap: boolean;
+  duplicateId: string | null;
+  isLumpSumMix: boolean;
+  categories: Category[];
+};
+
+async function prepareEntry(tx: Tx, options: { storeId: string; request: SaveRequest; editingId: string | null }): Promise<Entry> {
+  const { storeId, request } = options;
   const store = await tx.store.findUniqueOrThrow({ where: { id: storeId } });
   const today = resolveBusinessDate({ now: new Date(), timezone: store.timezone, dayChangeHour: store.dayChangeHour });
   const businessDate = request.businessDate ?? today;
@@ -129,44 +181,90 @@ async function writeTransaction(tx: Tx, storeId: string, request: SaveRequest): 
     linesToSave.push({ itemId: null, categoryId: defaultCategoryId, quantity: null, unit: null, unitPrice: null, lineTotal: settled.extraLineTotal, discount: 0, isNew: false, warningCodes: [] });
   }
 
-  const duplicateId = await findDuplicate(tx, { storeId, request, businessDate, total });
   const isSale = request.direction === "IN" && linesToSave.some((line) => categories.find((category) => category.id === line.categoryId)?.countedInProfit === true);
-  const isLumpSumMix = isSale && (await mixesLumpSumAndItemised(tx, { storeId, businessDate, isItemised: linesToSave.some((line) => line.itemId !== null) }));
+  return {
+    businessDate,
+    total,
+    personId,
+    linesToSave,
+    hasTotalGap: request.lines.length > 0 && total !== saveRules.sumLineTotals(pendingLines),
+    duplicateId: await findDuplicate(tx, { storeId, request, businessDate, total, editingId: options.editingId }),
+    isLumpSumMix: isSale && (await mixesLumpSumAndItemised(tx, { storeId, businessDate, isItemised: linesToSave.some((line) => line.itemId !== null), editingId: options.editingId })),
+    categories,
+  };
+}
 
-  const created = await tx.transaction.create({
-    data: {
-      storeId,
-      businessDate: toDbDate(businessDate),
-      direction: request.direction,
-      total,
-      personId,
-      dueDate: request.dueDate === null ? null : toDbDate(request.dueDate),
-      linkedTransactionId: request.linkedTransactionId,
-      source: request.source,
-      inputId: request.inputId,
-      note: request.note,
-      payments: { create: request.payments.map((payment) => ({ date: toDbDate(payment.date), amount: payment.amount, label: payment.label })) },
-    },
-  });
-
+async function writeLines(tx: Tx, options: { transactionId: string; entry: Entry }): Promise<{ warnings: Warning[]; newLineIds: Set<string> }> {
   const warnings: Warning[] = [];
   const newLineIds = new Set<string>();
-  for (const line of linesToSave) {
+  for (const line of options.entry.linesToSave) {
     const { id } = await tx.line.create({
-      data: { transactionId: created.id, itemId: line.itemId, categoryId: line.categoryId, quantity: line.quantity, unit: line.unit, unitPrice: line.unitPrice, lineTotal: line.lineTotal, discount: line.discount },
+      data: { transactionId: options.transactionId, itemId: line.itemId, categoryId: line.categoryId, quantity: line.quantity, unit: line.unit, unitPrice: line.unitPrice, lineTotal: line.lineTotal, discount: line.discount },
     });
     if (line.isNew) newLineIds.add(id);
     warnings.push(...line.warningCodes.map((code) => buildWarning(code, { lineId: id })));
   }
-  if (request.lines.length > 0 && total !== saveRules.sumLineTotals(pendingLines)) {
-    warnings.push(buildWarning("TOTAL_MISMATCH", { transactionId: created.id }));
+  if (options.entry.hasTotalGap) {
+    warnings.push(buildWarning("TOTAL_MISMATCH", { transactionId: options.transactionId }));
   }
-  if (duplicateId !== null) warnings.push(buildWarning("DUPLICATE_SUSPECTED", { transactionId: duplicateId }));
-  if (isLumpSumMix) warnings.push(buildWarning("LUMP_SUM_WITH_ITEMISED", { transactionId: created.id }));
-  if (saveRules.isOverpaid(total, request.payments)) warnings.push(buildWarning("OVERPAID", { transactionId: created.id }));
+  return { warnings, newLineIds };
+}
 
-  const row = toTransactionRow(await tx.transaction.findUniqueOrThrow({ where: { id: created.id }, select: TRANSACTION_ROW_SELECT }));
-  return { transaction: { ...row, lines: row.lines.map((line) => ({ ...line, isNew: newLineIds.has(line.id) })) }, warnings };
+async function readSavedRow(tx: Tx, options: { transactionId: string; newLineIds: Set<string> }): Promise<SaveResponse["transaction"]> {
+  const row = toTransactionRow(await tx.transaction.findUniqueOrThrow({ where: { id: options.transactionId }, select: TRANSACTION_ROW_SELECT }));
+  return { ...row, lines: row.lines.map((line) => ({ ...line, isNew: options.newLineIds.has(line.id) })) };
+}
+
+// A retur is an entry linked to its original with a negative total (§4.2). It
+// must point the same way as the original.
+async function findReturOriginal(tx: Tx, options: { storeId: string; request: SaveRequest }): Promise<{ id: string; total: number; payments: { amount: number }[] } | null> {
+  const { request } = options;
+  if (request.linkedTransactionId === null) {
+    return null;
+  }
+  const original = await tx.transaction.findFirstOrThrow({
+    where: { id: request.linkedTransactionId, storeId: options.storeId },
+    select: { id: true, direction: true, total: true, payments: { select: { amount: true } } },
+  });
+  if (original.direction !== request.direction) {
+    throw new ApiError({ code: "VALIDATION_FAILED", message: "Retur harus searah dengan catatan asal", fields: { direction: "Retur harus searah dengan catatan asal" } });
+  }
+  return request.total !== null && request.total < 0 ? original : null;
+}
+
+// §4.2: Pinjaman masuk opens an Utang of the same amount with the lender as the
+// person. Bayar on that Utang is the Bayar pinjaman.
+async function openLoanUtang(tx: Tx, options: { storeId: string; transactionId: string; request: SaveRequest; entry: Entry }): Promise<void> {
+  const { request, entry } = options;
+  if (request.direction !== "IN" || request.linkedTransactionId !== null) {
+    return;
+  }
+  const loanCategory = entry.categories.find((category) => category.fixed && category.direction === "IN" && category.name === LOAN_IN_CATEGORY);
+  const loanAmount = saveRules.sumLineTotals(entry.linesToSave.filter((line) => line.categoryId === loanCategory?.id));
+  if (loanAmount <= 0) {
+    return;
+  }
+  const repayCategory = entry.categories.find((category) => category.fixed && category.direction === "OUT" && category.name === LOAN_REPAY_CATEGORY);
+  await tx.transaction.create({
+    data: {
+      storeId: options.storeId,
+      businessDate: toDbDate(entry.businessDate),
+      direction: "OUT",
+      total: loanAmount,
+      personId: entry.personId,
+      dueDate: request.dueDate === null ? null : toDbDate(request.dueDate),
+      linkedTransactionId: options.transactionId,
+      source: request.source,
+      lines: { create: [{ categoryId: repayCategory?.id ?? null, lineTotal: loanAmount }] },
+    },
+  });
+}
+
+const LOAN_IN_CATEGORY = "Pinjaman masuk";
+const LOAN_REPAY_CATEGORY = "Bayar pinjaman";
+
+function sumAmounts(payments: { amount: number }[]): number {
+  return payments.reduce((sum, payment) => sum + payment.amount, 0);
 }
 
 // ---- Lines ------------------------------------------------------------------
@@ -286,10 +384,11 @@ async function requireOwnedLinks(tx: Tx, storeId: string, request: SaveRequest):
 
 // §7.3: the same photo twice, or the same date, direction and total as an
 // entry already saved (a sale spoken and then photographed).
-async function findDuplicate(tx: Tx, options: { storeId: string; request: SaveRequest; businessDate: string; total: number }): Promise<string | null> {
+async function findDuplicate(tx: Tx, options: { storeId: string; request: SaveRequest; businessDate: string; total: number; editingId: string | null }): Promise<string | null> {
   const { storeId, request } = options;
+  const notThisEntry = options.editingId === null ? {} : { id: { not: options.editingId } };
   const sameEntry = await tx.transaction.findFirst({
-    where: { storeId, deletedAt: null, businessDate: toDbDate(options.businessDate), direction: request.direction, total: options.total },
+    where: { storeId, deletedAt: null, ...notThisEntry, businessDate: toDbDate(options.businessDate), direction: request.direction, total: options.total },
     select: { id: true },
   });
   if (sameEntry !== null) {
@@ -310,9 +409,10 @@ async function findDuplicate(tx: Tx, options: { storeId: string; request: SaveRe
 }
 
 // §12: "Sudah ada penjualan rinci hari ini" before a lump sum, and the reverse.
-async function mixesLumpSumAndItemised(tx: Tx, options: { storeId: string; businessDate: string; isItemised: boolean }): Promise<boolean> {
+async function mixesLumpSumAndItemised(tx: Tx, options: { storeId: string; businessDate: string; isItemised: boolean; editingId: string | null }): Promise<boolean> {
+  const notThisEntry = options.editingId === null ? {} : { id: { not: options.editingId } };
   const sameDaySales = await tx.transaction.findMany({
-    where: { storeId: options.storeId, deletedAt: null, direction: "IN", businessDate: toDbDate(options.businessDate), lines: { some: { category: { countedInProfit: true } } } },
+    where: { storeId: options.storeId, deletedAt: null, ...notThisEntry, direction: "IN", businessDate: toDbDate(options.businessDate), lines: { some: { category: { countedInProfit: true } } } },
     select: { lines: { select: { itemId: true } } },
   });
   return saveRules.mixesLumpSumAndItemised({

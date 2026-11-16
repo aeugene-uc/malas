@@ -86,3 +86,10 @@ export function isOverpaid(total: number, payments: { amount: number }[]): boole
 export function mixesLumpSumAndItemised(options: { isItemised: boolean; sameDaySales: { isItemised: boolean }[] }): boolean {
   return options.sameDaySales.some((sale) => sale.isItemised !== options.isItemised);
 }
+
+// §4.2: a retur against an entry still open cancels that balance first, with no
+// cash. Only the rest is cash given back (shown in the day's total as Retur).
+export function planRetur(options: { refund: number; openOnOriginal: number }): { settledAgainstOriginal: number; cashBack: number } {
+  const settledAgainstOriginal = Math.min(options.refund, Math.max(options.openOnOriginal, 0));
+  return { settledAgainstOriginal, cashBack: options.refund - settledAgainstOriginal };
+}
