@@ -164,3 +164,13 @@ function readOptionalText(value: unknown, field: string, fields: FieldErrors, ma
   }
   return text === "" ? null : text;
 }
+
+export const deleteTransaction = handleAsync(async (req, res) => {
+  await transactionService.deleteTransaction(readAuth(res).storeId, String(req.params.id));
+  res.json({ ok: true });
+});
+
+export const restoreTransaction = handleAsync(async (req, res) => {
+  await transactionService.restoreTransaction(readAuth(res).storeId, String(req.params.id));
+  res.json({ ok: true });
+});

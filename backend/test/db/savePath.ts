@@ -247,6 +247,39 @@ test("savesABareAmountWithNoLinesAsOneLine", async () => {
   assert.deepEqual([reply.body.transaction.lines.length, line?.lineTotal, line?.category?.name, reply.body.warnings], [1, 25000, "Lainnya", []]);
 });
 
+test("batalSoftDeletesTheEntryAndItsPaymentsThenRestoreBringsThemBack", async () => {
+  const saved = await save(owner, {
+    businessDate: "2026-10-15",
+    direction: "IN",
+    total: 61000,
+    lines: [{ itemId: null, itemName: null, categoryId: null, quantity: null, unit: null, unitPrice: null, lineTotal: 61000 }],
+    payments: [{ date: "2026-10-15", amount: 61000, label: "cash" }],
+  });
+  const id = saved.body.transaction.id;
+  const deleted = await send(owner, { method: "DELETE", path: `/transactions/${id}` });
+  const afterDelete = await prisma.transaction.findUniqueOrThrow({ where: { id } });
+  const restored = await send(owner, { method: "POST", path: `/transactions/${id}/restore` });
+  const afterRestore = await prisma.transaction.findUniqueOrThrow({ where: { id } });
+  assert.deepEqual([deleted, afterDelete.deletedAt !== null, restored, afterRestore.deletedAt], [200, true, 200, null]);
+});
+
+test("answersAnotherStoresEntryAsNotFound", async () => {
+  const saved = await save(otherOwner, { businessDate: "2026-10-16", direction: "IN", total: 1000, lines: [], payments: [] });
+  const status = await send(owner, { method: "DELETE", path: `/transactions/${saved.body.transaction.id}` });
+  const untouched = await prisma.transaction.findUniqueOrThrow({ where: { id: saved.body.transaction.id } });
+  assert.deepEqual([status, untouched.deletedAt], [404, null]);
+});
+
+test("refusesASaveWithNoIdempotencyKey", async () => {
+  const response = await fetch(`${baseUrl}/transactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${owner.token}` },
+    body: JSON.stringify({ direction: "IN", total: 1000 }),
+  });
+  const body = (await response.json()) as { error: { fields: Record<string, string> } };
+  assert.deepEqual([response.status, Object.keys(body.error.fields)], [400, ["idempotencyKey"]]);
+});
+
 // ---- Helpers ----------------------------------------------------------------
 
 async function save(saveOwner: Owner, entry: Record<string, unknown>, key: string = randomUUID()): Promise<SaveReply> {
@@ -256,6 +289,11 @@ async function save(saveOwner: Owner, entry: Record<string, unknown>, key: strin
     body: JSON.stringify({ personId: null, personName: null, dueDate: null, source: "VOICE", inputId: null, note: null, ...entry }),
   });
   return { status: response.status, body: (await response.json()) as SaveReply["body"] };
+}
+
+async function send(sendOwner: Owner, options: { method: string; path: string }): Promise<number> {
+  const response = await fetch(`${baseUrl}${options.path}`, { method: options.method, headers: { Authorization: `Bearer ${sendOwner.token}` } });
+  return response.status;
 }
 
 async function createOwner(name: string): Promise<Owner> {

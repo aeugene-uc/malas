@@ -325,3 +325,22 @@ async function mixesLumpSumAndItemised(tx: Tx, options: { storeId: string; busin
 function toDbDate(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
 }
+
+// ---- Delete and Batal -------------------------------------------------------
+
+// §7.5: delete is soft, and the payments go with it because every query skips
+// a deleted transaction's payments. Batal on the toast is the restore.
+export async function deleteTransaction(storeId: string, transactionId: string): Promise<void> {
+  await setDeletedAt({ storeId, transactionId, deletedAt: new Date() });
+}
+
+export async function restoreTransaction(storeId: string, transactionId: string): Promise<void> {
+  await setDeletedAt({ storeId, transactionId, deletedAt: null });
+}
+
+async function setDeletedAt(options: { storeId: string; transactionId: string; deletedAt: Date | null }): Promise<void> {
+  const { count } = await prisma.transaction.updateMany({ where: { id: options.transactionId, storeId: options.storeId }, data: { deletedAt: options.deletedAt } });
+  if (count === 0) {
+    throw new ApiError({ code: "NOT_FOUND", message: "Catatan tidak ditemukan" });
+  }
+}
