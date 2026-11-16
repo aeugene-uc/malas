@@ -78,5 +78,5 @@ test("refusesAnEntryWithNoLinesAndNoAmount", () => {
 });
 
 test("knowsWhichDatesAreRealDays", () => {
-  assert.deepEqual([isCalendarDate("2028-02-29"), isCalendarDate("2026-02-29"), isCalendarDate("2026-11-16T00:00:00Z")], [true, false, false]);
+  assert.deepEqual([isCalendarDate("2028-02-29"), isCalendarDate("2026-02-29"), isCalendarDate("2026-11-16T00:00:00Z"), isCalendarDate("2026-13-01")], [true, false, false, false]);
 });

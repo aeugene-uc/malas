@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeLineMoney, isOverpaid, isPriceImplausible, mixesLumpSumAndItemised, settleTotalGap } from "../../src/services/saveRules.js";
+import { computeLineMoney, isOverpaid, isPriceImplausible, mixesLumpSumAndItemised, planRetur, settleTotalGap } from "../../src/services/saveRules.js";
 
 test("savesSpokenTotalAndRecordsDiscount", () => {
   // "nasi 2, 25 ribu aja" with nasi at Rp 15.000 (spec §7.3).
@@ -69,5 +69,12 @@ test("warnsWhenALumpSumMeetsAnItemisedSaleOnTheSameDay", () => {
       mixesLumpSumAndItemised({ isItemised: true, sameDaySales: [] }),
     ],
     [true, false, false],
+  );
+});
+
+test("returCancelsTheOpenBalanceFirstAndGivesTheRestBackInCash", () => {
+  assert.deepEqual(
+    [planRetur({ refund: 40000, openOnOriginal: 100000 }), planRetur({ refund: 40000, openOnOriginal: 10000 }), planRetur({ refund: 40000, openOnOriginal: -5000 })],
+    [{ settledAgainstOriginal: 40000, cashBack: 0 }, { settledAgainstOriginal: 10000, cashBack: 30000 }, { settledAgainstOriginal: 0, cashBack: 40000 }],
   );
 });

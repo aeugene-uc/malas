@@ -1,6 +1,9 @@
 import type { Request } from "express";
 import { readAuth } from "../auth.js";
 import { ApiError, handleAsync } from "../errors.js";
+import * as draftCopies from "../services/draftCopies.js";
+import * as transactionQueries from "../services/transactionQueries.js";
+import type { ListFilter } from "../services/transactionQueries.js";
 import * as transactionService from "../services/transactionService.js";
 import type { SaveLine, SavePayment, SaveRequest, Source } from "../services/transactionService.js";
 import { readBody, readPrice, throwIfInvalid, type FieldErrors } from "./validate.js";
@@ -127,7 +130,12 @@ function readOptionalDate(value: unknown, field: string, fields: FieldErrors): s
 
 // "2026-02-30" matches the pattern but is not a day.
 export function isCalendarDate(value: string): boolean {
-  return DATE.test(value) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  if (!DATE.test(value)) {
+    return false;
+  }
+  // A month above 12 is not a date at all, and toISOString would throw on it.
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function readOptionalMoney(value: unknown, field: string, fields: FieldErrors): number | null | undefined {
@@ -174,3 +182,100 @@ export const restoreTransaction = handleAsync(async (req, res) => {
   await transactionService.restoreTransaction(readAuth(res).storeId, String(req.params.id));
   res.json({ ok: true });
 });
+
+// ---- Catatan (S6) -----------------------------------------------------------
+
+export const listTransactions = handleAsync(async (req, res) => {
+  res.json(await transactionQueries.list(readAuth(res).storeId, readListFilter(req.query)));
+});
+
+export const getTransaction = handleAsync(async (req, res) => {
+  res.json({ transaction: await transactionQueries.getDetail(readAuth(res).storeId, String(req.params.id)) });
+});
+
+// §7.5: an edit sends the whole entry again, like Simpan. Payments are changed
+// with Bayar, so any in the body are left alone.
+export const editTransaction = handleAsync(async (req, res) => {
+  const request = readSaveRequest(readBody(req));
+  res.json(await transactionService.edit({ storeId: readAuth(res).storeId, transactionId: String(req.params.id), request }));
+});
+
+export const getHistory = handleAsync(async (req, res) => {
+  res.json({ history: await transactionQueries.getHistory(readAuth(res).storeId, String(req.params.id)) });
+});
+
+export const payTransaction = handleAsync(async (req, res) => {
+  const body = readBody(req);
+  const fields: FieldErrors = {};
+  const amount = body.amount;
+  if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0 || amount > MAX_MONEY) {
+    fields.amount = "Jumlah bayar tidak valid";
+  }
+  const date = readOptionalDate(body.date, "date", fields);
+  const label = readOptionalText(body.label, "label", fields, 20);
+  throwIfInvalid(fields);
+  const paid = await transactionService.pay({ storeId: readAuth(res).storeId, transactionId: String(req.params.id), amount: amount as number, date: date ?? null, label: label ?? null });
+  res.status(201).json(paid);
+});
+
+export const deletePayment = handleAsync(async (req, res) => {
+  await transactionService.deletePayment(readAuth(res).storeId, String(req.params.id));
+  res.json({ ok: true });
+});
+
+export const listReceivables = handleAsync(async (_req, res) => {
+  res.json({ rows: await transactionQueries.listOpen(readAuth(res).storeId, "PIUTANG") });
+});
+
+export const listPayables = handleAsync(async (_req, res) => {
+  res.json({ rows: await transactionQueries.listOpen(readAuth(res).storeId, "UTANG") });
+});
+
+export const repeatTransaction = handleAsync(async (req, res) => {
+  res.json(await draftCopies.buildDraftFor({ storeId: readAuth(res).storeId, transactionId: String(req.params.id), kind: "REPEAT" }));
+});
+
+export const returTransaction = handleAsync(async (req, res) => {
+  res.json(await draftCopies.buildDraftFor({ storeId: readAuth(res).storeId, transactionId: String(req.params.id), kind: "RETUR" }));
+});
+
+// The Catatan filters (§6) from the query string. Unknown values are refused
+// so a typo in the app shows up instead of quietly listing everything.
+export function readListFilter(query: Record<string, unknown>): ListFilter {
+  const fields: FieldErrors = {};
+  const text = (name: string): string | null => {
+    const value = query[name];
+    if (value === undefined || value === "") return null;
+    if (typeof value !== "string" || value.length > 191) {
+      fields[name] = "Filter tidak valid";
+      return null;
+    }
+    return value.trim() === "" ? null : value.trim();
+  };
+  const filter: ListFilter = {
+    from: text("from"),
+    to: text("to"),
+    direction: null,
+    itemId: text("itemId"),
+    categoryId: text("categoryId"),
+    personId: text("personId"),
+    isUnpaidOnly: query.unpaid === "true",
+    q: text("q"),
+    cursor: text("cursor"),
+  };
+  for (const name of ["from", "to"] as const) {
+    const value = filter[name];
+    if (value !== null && !isCalendarDate(value)) fields[name] = "Tanggal tidak valid";
+  }
+  const direction = text("direction");
+  if (direction === "IN" || direction === "OUT") {
+    filter.direction = direction;
+  } else if (direction !== null) {
+    fields.direction = "Filter tidak valid";
+  }
+  if (query.unpaid !== undefined && query.unpaid !== "true" && query.unpaid !== "false") {
+    fields.unpaid = "Filter tidak valid";
+  }
+  throwIfInvalid(fields);
+  return filter;
+}
