@@ -7,8 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
   // The `malas` user cannot create databases, so `prisma migrate dev` is
   // given a pre-made empty one instead of making its own throwaway.
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
@@ -39,36 +39,37 @@ model User {
 // ---------------------------------------------------------------------------
 
 model Store {
-  id               String    @id @default(cuid())
-  ownerId          String
-  name             String
-  businessTypes    Json
-  closedDays       Json
+  id                 String    @id @default(cuid())
+  ownerId            String
+  name               String
+  businessTypes      Json
+  closedDays         Json
   // Needed to resolve dayChangeHour into a businessDate. Indonesia spans
   // WIB/WITA/WIT, so the hour alone is not enough. IANA name, not an offset.
-  timezone         String    @default("Asia/Jakarta")
-  dayChangeHour    Int       @default(4)
-  reminderTime     String?
+  timezone           String    @default("Asia/Jakarta")
+  dayChangeHour      Int       @default(4)
+  reminderTime       String?
   // The Peringatan switch in Settings (F9, #176). Off hides the alert cards
   // and skips alerts in the evening reminder.
-  alertsOn         Boolean   @default(true)
-  plan             Plan      @default(GRATIS)
-  trialEndsAt      DateTime?
-  aiReadsThisMonth Int       @default(0)
-  aiReadsResetAt   DateTime?
+  alertsOn           Boolean   @default(true)
+  plan               Plan      @default(GRATIS)
+  trialEndsAt        DateTime?
+  aiReadsThisMonth   Int       @default(0)
+  aiReadsResetAt     DateTime?
   // Tanya questions this month (spec §18: Pro 300, Pro Plus 1.000), counted
   // like AI reads.
   questionsThisMonth Int       @default(0)
   questionsResetAt   DateTime?
-  createdAt        DateTime  @default(now())
+  createdAt          DateTime  @default(now())
 
-  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  categories   Category[]
-  items        Item[]
-  people       Person[]
-  transactions Transaction[]
-  inputs       Input[]
-  alerts       Alert[]
+  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  categories      Category[]
+  items           Item[]
+  people          Person[]
+  transactions    Transaction[]
+  inputs          Input[]
+  alerts          Alert[]
+  idempotencyKeys IdempotencyKey[]
 
   @@index([ownerId])
   @@map("stores")
@@ -188,7 +189,7 @@ enum Source {
 }
 
 model Line {
-  id            String  @id @default(cuid())
+  id            String   @id @default(cuid())
   transactionId String
   itemId        String?
   categoryId    String?
@@ -202,7 +203,7 @@ model Line {
   // §10: spoken or printed total when given, else quantity x unitPrice.
   lineTotal     Int
   // §10: quantity x unitPrice - lineTotal. Computed in code, stored for history.
-  discount      Int     @default(0)
+  discount      Int      @default(0)
 
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   item        Item?       @relation(fields: [itemId], references: [id], onDelete: SetNull)
@@ -294,4 +295,21 @@ model Alert {
 
   @@index([storeId, seen])
   @@map("alerts")
+}
+
+// Simpan's Idempotency-Key (contract "Transactions"): one per draft, reused on
+// retry. The same key with the same body replays the stored response, so a
+// retry after a lost reply never records the sale twice.
+model IdempotencyKey {
+  id          String   @id @default(cuid())
+  storeId     String
+  key         String   @db.VarChar(100)
+  requestHash String   @db.Char(64)
+  response    Json
+  createdAt   DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key])
+  @@map("idempotency_keys")
 }
