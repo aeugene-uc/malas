@@ -1,5 +1,6 @@
 import type { Store } from "@prisma/client";
 import { prisma } from "../db.js";
+import { ApiError } from "../errors.js";
 import * as alertRules from "./alertRules.js";
 import { addDays } from "./analytics.js";
 import { resolveBusinessDate } from "./businessDate.js";
@@ -113,4 +114,18 @@ async function loadMutedItemIds(storeId: string): Promise<Set<string>> {
 
 function toDate(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
+}
+
+export type AlertChanges = Partial<{ seen: boolean; muted: boolean }>;
+export type AlertJson = { id: string; rule: string; message: string | null; seen: boolean; muted: boolean };
+
+// "Jangan ingatkan" (§7.7) mutes the alert, and loadMutedItemIds then keeps
+// every later alert on its item from being raised. Seen marks it read.
+export async function updateAlert(options: { storeId: string; alertId: string; changes: AlertChanges }): Promise<AlertJson> {
+  const { count } = await prisma.alert.updateMany({ where: { id: options.alertId, storeId: options.storeId }, data: options.changes });
+  if (count === 0) {
+    throw new ApiError({ code: "NOT_FOUND", message: "Peringatan tidak ditemukan" });
+  }
+  const alert = await prisma.alert.findUniqueOrThrow({ where: { id: options.alertId } });
+  return { id: alert.id, rule: alert.rule, message: alert.value, seen: alert.seen, muted: alert.muted };
 }
