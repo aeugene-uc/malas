@@ -4,6 +4,7 @@ import { analyticsRouter } from "./routes/analytics.js";
 import { authRouter } from "./routes/auth.js";
 import { catalogRouter } from "./routes/catalog.js";
 import { healthRouter } from "./routes/health.js";
+import { transactionRouter } from "./routes/transactions.js";
 import { handleError, handleNotFound } from "./errors.js";
 
 export function createApp(): Express {
@@ -17,6 +18,7 @@ export function createApp(): Express {
   app.use("/api/v1", aiRouter);
   app.use("/api/v1", catalogRouter);
   app.use("/api/v1", analyticsRouter);
+  app.use("/api/v1", transactionRouter);
 
   app.use(handleNotFound);
   app.use(handleError);
