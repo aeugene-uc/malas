@@ -142,16 +142,7 @@ final Map<String, Object> mockBodiesByRoute = {
     'period': {'from': '2026-11-09', 'to': '2026-11-15'},
     'function': 'byItem',
   },
-  'GET /transactions': {
-    'transactions': [
-      _nasiGorengSale,
-      _gasPurchase,
-      _budiBon,
-      _supplierTempo,
-      _overpaidOrder,
-    ],
-    'nextCursor': null,
-  },
+  'GET /transactions': {'transactions': sampleTransactions, 'nextCursor': null},
   'DELETE /transactions/:id': <String, Object>{},
   'POST /transactions/:id/restore': <String, Object>{},
   'POST /transactions/:id/payments': {
@@ -356,6 +347,15 @@ const Map<String, Object> _setUpAccount = {
   ],
 };
 
+/// Newest first, as `GET /transactions` returns them.
+final List<Map<String, Object>> sampleTransactions = [
+  _nasiGorengSale,
+  _gasPurchase,
+  _budiBon,
+  _supplierTempo,
+  _overpaidOrder,
+];
+
 Map<String, Object> _transaction({
   required String id,
   required String businessDate,
@@ -387,13 +387,17 @@ Map<String, Object?> _line({
   required String id,
   required String? itemName,
   required int lineTotal,
+  String? itemId,
+  Map<String, Object>? category,
   String? quantity,
   String? unit,
 }) {
   return {
     'id': id,
-    'item': itemName == null ? null : {'id': 'item-$id', 'name': itemName},
-    'category': null,
+    'item': itemName == null
+        ? null
+        : {'id': itemId ?? 'item-$id', 'name': itemName},
+    'category': category,
     'quantity': quantity,
     'unit': unit,
     'unitPrice': null,
@@ -412,6 +416,7 @@ final Map<String, Object> _nasiGorengSale = _transaction(
   lines: [
     _line(
       id: 'l1',
+      itemId: 'item-1',
       itemName: 'Nasi goreng',
       quantity: '2',
       unit: 'porsi',
@@ -419,6 +424,7 @@ final Map<String, Object> _nasiGorengSale = _transaction(
     ),
     _line(
       id: 'l2',
+      itemId: 'item-2',
       itemName: 'Es teh',
       quantity: '4',
       unit: 'gelas',
@@ -433,7 +439,7 @@ final Map<String, Object> _gasPurchase = _transaction(
   direction: 'OUT',
   total: 25000,
   paid: 25000,
-  lines: [_line(id: 'l3', itemName: 'Gas', lineTotal: 25000)],
+  lines: [_line(id: 'l3', itemId: 'item-3', itemName: 'Gas', lineTotal: 25000)],
 );
 
 final Map<String, Object> _budiBon = _transaction(
@@ -460,6 +466,7 @@ final Map<String, Object> _supplierTempo = _transaction(
     _line(
       id: 'l5',
       itemName: 'Beras',
+      category: {'id': 'cat-bahan', 'name': 'Bahan'},
       quantity: '50',
       unit: 'kg',
       lineTotal: 1200000,

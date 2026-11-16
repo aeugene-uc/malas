@@ -111,8 +111,13 @@ class _OpenTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final personName = transaction.person?.name ?? 'Tanpa nama';
+    // The person is the card's title, so the details list only the lines.
+    final lineDescriptions = transaction.lines
+        .map(describeLine)
+        .where((description) => description.isNotEmpty)
+        .join(', ');
     final details = [
-      describeEntry(transaction),
+      if (lineDescriptions.isNotEmpty) lineDescriptions,
       formatEntryDate(transaction.businessDate),
       if (transaction.dueDate case final dueDate?)
         'Jatuh tempo ${formatEntryDate(dueDate)}',
