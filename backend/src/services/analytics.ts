@@ -71,30 +71,45 @@ export type RankLine = {
   category: { id: string; name: string } | null;
 };
 
-export type ShareRow = { id: string; name: string; amount: number; share: number };
+// kind tells Catatan whether to filter by itemId or categoryId (#262). Lines
+// with no category share one row with id null, which Catatan cannot filter on.
+export type ShareRow = { kind: "item" | "category"; id: string | null; name: string; amount: number; share: number };
+
+type RankTarget = Omit<ShareRow, "amount" | "share">;
 
 // Spec §7.6: money in by item, and money out by category and expense item. In
 // "category" mode a line with an item counts under the item (Gas), and a line
 // without one under its category (Sewa). Money not counted in profit is left
 // out; it has its own line in the summary.
 export function rankLines(lines: RankLine[], mode: "item" | "category"): ShareRow[] {
-  const rowsById = new Map<string, { name: string; amount: number }>();
+  const rowsByKey = new Map<string, RankTarget & { amount: number }>();
   for (const line of lines) {
     if (line.countedInProfit === false) {
       continue;
     }
-    const target = line.item ?? (mode === "category" ? (line.category ?? { id: "none", name: "Tanpa kategori" }) : null);
+    const target = findRankTarget(line, mode);
     if (target === null) {
       continue;
     }
-    const row = rowsById.get(target.id) ?? { name: target.name, amount: 0 };
+    const key = `${target.kind}:${target.id ?? ""}`;
+    const row = rowsByKey.get(key) ?? { ...target, amount: 0 };
     row.amount += line.lineTotal;
-    rowsById.set(target.id, row);
+    rowsByKey.set(key, row);
   }
-  const total = [...rowsById.values()].reduce((sum, row) => sum + row.amount, 0);
-  return [...rowsById.entries()]
-    .map(([id, row]) => ({ id, name: row.name, amount: row.amount, share: total === 0 ? 0 : Math.round((row.amount / total) * 10_000) / 10_000 }))
+  const total = [...rowsByKey.values()].reduce((sum, row) => sum + row.amount, 0);
+  return [...rowsByKey.values()]
+    .map((row) => ({ ...row, share: total === 0 ? 0 : Math.round((row.amount / total) * 10_000) / 10_000 }))
     .sort((a, b) => b.amount - a.amount);
+}
+
+function findRankTarget(line: RankLine, mode: "item" | "category"): RankTarget | null {
+  if (line.item !== null) {
+    return { kind: "item", ...line.item };
+  }
+  if (mode === "item") {
+    return null;
+  }
+  return line.category === null ? { kind: "category", id: null, name: "Tanpa kategori" } : { kind: "category", ...line.category };
 }
 
 const WEEKDAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];

@@ -46,8 +46,8 @@ test("ranksMoneyInByItemAndMoneyOutByCategoryAndExpenseItem", () => {
     { lineTotal: 1_000_000, countedInProfit: false, item: null, category: { id: "cat-modal", name: "Modal masuk" } },
   ];
   assert.deepEqual(rankLines(lines, "item"), [
-    { id: "item-nasi", name: "Nasi goreng", amount: 60_000, share: 0.75 },
-    { id: "item-teh", name: "Es teh", amount: 20_000, share: 0.25 },
+    { kind: "item", id: "item-nasi", name: "Nasi goreng", amount: 60_000, share: 0.75 },
+    { kind: "item", id: "item-teh", name: "Es teh", amount: 20_000, share: 0.25 },
   ]);
   const spending: RankLine[] = [
     { lineTotal: 75_000, countedInProfit: true, item: { id: "item-gas", name: "Gas" }, category: { id: "cat-ops", name: "Operasional" } },
@@ -56,10 +56,11 @@ test("ranksMoneyInByItemAndMoneyOutByCategoryAndExpenseItem", () => {
     // The owner taking money out is not spending: it has its own summary line.
     { lineTotal: 500_000, countedInProfit: false, item: null, category: { id: "cat-ambil", name: "Ambil pribadi" } },
   ];
-  assert.deepEqual(rankLines(spending, "category").map((row) => [row.name, row.amount, row.share]), [
-    ["Sewa", 1_000_000, 0.9091],
-    ["Gas", 75_000, 0.0682],
-    ["Tanpa kategori", 25_000, 0.0227],
+  // Catatan filters by itemId for an item row and categoryId for a category row.
+  assert.deepEqual(rankLines(spending, "category").map((row) => [row.kind, row.id, row.name, row.amount, row.share]), [
+    ["category", "cat-sewa", "Sewa", 1_000_000, 0.9091],
+    ["item", "item-gas", "Gas", 75_000, 0.0682],
+    ["category", null, "Tanpa kategori", 25_000, 0.0227],
   ]);
 });
 
