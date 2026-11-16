@@ -74,6 +74,37 @@ void main() {
     expect(find.text('Coba lagi'), findsOneWidget);
   });
 
+  testWidgets('aReturDraftReadsReturNotBelumDibayar', (tester) async {
+    final retur = Draft.fromJson(const {
+      'direction': 'IN',
+      'total': -30000,
+      'personId': null,
+      'personName': null,
+      'dueDate': null,
+      'source': 'TYPED',
+      'inputId': null,
+      'note': null,
+      'linkedTransactionId': 'trx-1',
+      'lines': [
+        {
+          'itemId': 'item-1',
+          'itemName': 'Nasi goreng',
+          'categoryId': 'cat-1',
+          'quantity': '-2',
+          'unit': 'porsi',
+          'unitPrice': 15000,
+          'lineTotal': -30000,
+        },
+      ],
+      'payments': <Object?>[],
+    });
+    await _openDraftFromHost(tester, _RecordingAdapter(), drafts: [retur]);
+
+    expect(find.text('Retur'), findsOneWidget);
+    expect(find.text('Belum dibayar'), findsNothing);
+    expect(find.text('-Rp 30.000'), findsWidgets);
+  });
+
   group('input parsing', () {
     test('parseRupiahInputReadsWholeRupiah', () {
       expect(parseRupiahInput('Rp 12.500'), 12500);
@@ -98,6 +129,7 @@ Future<void> _openDraftFromHost(
   WidgetTester tester,
   _RecordingAdapter adapter, {
   VoidCallback? onChanged,
+  List<Draft>? drafts,
 }) async {
   // Tall enough that all three drafts are built, not scrolled off.
   tester.view.physicalSize = const Size(800, 2000);
@@ -123,8 +155,8 @@ Future<void> _openDraftFromHost(
             builder: (context) => TextButton(
               onPressed: () => openDraftScreen(
                 context,
-                drafts: readResult.drafts,
-                warnings: readResult.warnings,
+                drafts: drafts ?? readResult.drafts,
+                warnings: drafts == null ? readResult.warnings : const [],
                 businessToday: '2026-11-11',
                 onChanged: onChanged ?? () {},
               ),

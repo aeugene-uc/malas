@@ -176,9 +176,7 @@ class _DraftCard extends StatelessWidget {
                 [isMasuk ? 'Masuk' : 'Keluar', ?personName].join(' · '),
                 style: textTheme.titleMedium,
               ),
-              subtitle: draft.payments.isEmpty
-                  ? const Text('Belum dibayar')
-                  : null,
+              subtitle: _describePayment(draft),
               trailing: Text(
                 formatRupiah(draft.total),
                 style: textTheme.titleMedium,
@@ -194,6 +192,15 @@ class _DraftCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A Retur carries no payments: the server works out on Simpan how much
+/// cancels the original's open balance and how much is cash back (S6). So
+/// only a draft that isn't a Retur reads Belum dibayar.
+Widget? _describePayment(Draft draft) {
+  if (draft.linkedTransactionId != null) return const Text('Retur');
+  if (draft.payments.isEmpty) return const Text('Belum dibayar');
+  return null;
 }
 
 class _LineTile extends StatelessWidget {
