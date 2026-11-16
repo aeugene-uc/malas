@@ -82,17 +82,23 @@ const unitByWord: Record<string, { unit: Unit; factor: number }> = {
 export function hasMoneyMarker(text: string): boolean {
   return tokenize(text).some(
     (word) =>
-      word === "rp" ||
+      CURRENCY_PREFIX.test(word) ||
+      PRINTED_ENDING.test(word) ||
       Object.hasOwn(rupiahBySlang, word) ||
       Object.hasOwn(multiplierByWord, word) ||
-      /^\d{1,3}(\.\d{3})+$/.test(word),
+      /^\d{1,3}([.,]\d{3})+$/.test(word),
   );
 }
+
+// "Rp", "Rp." and "IDR", alone or stuck to the digits ("rp.12.500").
+const CURRENCY_PREFIX = /^(rp|idr)(\.|$|(?=\d))/;
+// Receipts end whole rupiah with ",-" or ",00" ("12.500,-", "2.500.000,00").
+const PRINTED_ENDING = /\d(,-|\.-|,00|-)$/;
 
 // Returns integer rupiah, or null when the text is not a clear amount, so the
 // draft highlights it instead of guessing.
 export function parseRupiah(text: string): number | null {
-  const words = tokenize(text).filter((word) => word !== "rp");
+  const words = toMoneyWords(tokenize(text));
   const onlyWord = words.length === 1 ? words[0] : undefined;
   if (onlyWord !== undefined && onlyWord in rupiahBySlang) {
     return rupiahBySlang[onlyWord] ?? null;
@@ -102,6 +108,17 @@ export function parseRupiah(text: string): number | null {
     return null;
   }
   return value / SCALE;
+}
+
+// Rupiah has no cents, so without ribu or juta a comma before exactly 3 digits
+// is a thousands separator: minimarket receipts print "48,000". With a
+// multiplier the comma stays a decimal point ("1,2 juta").
+function toMoneyWords(words: string[]): string[] {
+  const hasMultiplier = words.some((word) => Object.hasOwn(multiplierByWord, word));
+  return words
+    .map((word) => word.replace(CURRENCY_PREFIX, "").replace(/(,-|\.-|,00|-)$/, ""))
+    .filter((word) => word !== "")
+    .map((word) => (!hasMultiplier && /^\d{1,3}(,\d{3})+$/.test(word) ? word.replaceAll(",", "") : word));
 }
 
 // "setengah kilo" becomes { quantity: "0.5", unit: "kg" }. A bare number is a

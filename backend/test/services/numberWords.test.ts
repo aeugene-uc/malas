@@ -31,6 +31,20 @@ test("treatsDotBeforeThreeDigitsAsThousandsSeparator", () => {
   assert.equal(parseRupiah("rp1.250.000"), 1_250_000);
 });
 
+test("readsTheWaysReceiptsPrintRupiah", () => {
+  assert.equal(parseRupiah("48,000"), 48_000);
+  assert.equal(parseRupiah("Rp18,000"), 18_000);
+  assert.equal(parseRupiah("1,250,000"), 1_250_000);
+  assert.equal(parseRupiah("Rp. 12.500"), 12_500);
+  assert.equal(parseRupiah("rp.12.500"), 12_500);
+  assert.equal(parseRupiah("IDR 12.500"), 12_500);
+  assert.equal(parseRupiah("12.500,-"), 12_500);
+  assert.equal(parseRupiah("Rp 12.500,00"), 12_500);
+  assert.equal(parseRupiah("2.500.000,00"), 2_500_000);
+  // With a multiplier the comma is still a decimal point.
+  assert.equal(parseRupiah("1,250 juta"), 1_250_000);
+});
+
 test("returnsNullForUnclearAmountsSoTheDraftFlagsThem", () => {
   assert.equal(parseRupiah("ribuan"), null);
   assert.equal(parseRupiah("dua goceng"), null);
@@ -66,7 +80,7 @@ test("returnsNullForZeroOrUnknownQuantity", () => {
 });
 
 test("tellsMoneyFromABareNumberByItsMarker", () => {
-  for (const text of ["25 ribu", "25rb", "15k", "1,2 juta", "Rp 12", "ceban", "25.000"]) {
+  for (const text of ["25 ribu", "25rb", "15k", "1,2 juta", "Rp 12", "ceban", "25.000", "48,000", "IDR 500", "Rp. 12", "500,-"]) {
     assert.equal(hasMoneyMarker(text), true, text);
   }
   for (const text of ["selawe", "12", "setengah", "tiga"]) {

@@ -143,6 +143,19 @@ test("letsThePrintedGrandTotalWinOverTheSumOfTheLines", () => {
   assert.deepEqual([draft?.total, draft?.payments.map((payment) => payment.amount)], [50_000, [50_000]]);
 });
 
+// Obie's Indomaret receipt (#221): comma thousands once made this a Rp 48 draft.
+test("readsAMinimarketReceiptWithCommaThousands", () => {
+  const { drafts, warnings } = buildPrinted(
+    [
+      heard({ direction: "OUT", name: "gula", amountText: "30,000" }),
+      heard({ direction: "OUT", name: "minyak", amountText: "Rp18,000" }),
+    ],
+    { seller: "Indomaret", date: "2026-11-10", totalText: "48,000" },
+  );
+  assert.deepEqual([drafts[0]?.total, drafts[0]?.payments.map((payment) => payment.amount)], [48_000, [48_000]]);
+  assert.deepEqual(warnings, []);
+});
+
 test("ignoresThePrintedTotalWhenThePageBecameSeveralTransactions", () => {
   const { drafts } = buildPrinted(
     [heard({ name: "kopi", amountText: "10 ribu" }), heard({ direction: "OUT", name: "gula", amountText: "20 ribu" })],
