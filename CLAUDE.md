@@ -41,7 +41,7 @@ backend/   Express + TypeScript + Prisma on MariaDB
 - Validate at trust boundaries: request bodies, AI output, network calls.
 - Comments say why, never what.
 - A test must fail when the code is wrong. Break the code once and check that the test catches it. Test names state the behaviour (`savesSpokenTotalAndRecordsDiscount`).
-- UI carries labels and data only. No subtitle, hint or footer text explaining a feature.
+- UI carries labels and data only. No subtitle, hint or footer text explaining a feature. The one exception is the sentence on the setup screen that says what the app does (usability finding 2, #34).
 
 ## Git
 
