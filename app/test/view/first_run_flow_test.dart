@@ -29,6 +29,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(FirstRunView), findsOneWidget);
     expect(find.text(consentLine), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text(appPurposeLine)).dy,
+      lessThan(tester.getTopLeft(_field('Nama usaha')).dy),
+    );
 
     await tester.enterText(_field('Nama usaha'), 'Warung Pak Budi');
     await tester.tap(find.text('Makanan & minuman'));

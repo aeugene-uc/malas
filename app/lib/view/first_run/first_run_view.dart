@@ -13,6 +13,13 @@ const String consentLine =
     'Foto dan suara dibaca layanan AI di luar Indonesia, suara diubah jadi '
     'teks oleh Google, dan catatan disimpan di server MALAS.';
 
+/// Usability finding 2 (#34): owners in the 9 Nov sessions reached setup not
+/// knowing what the app was for, so this one sentence comes before the
+/// business name. It is the one explanatory line the UI allows (§5.8).
+const String appPurposeLine =
+    'Catat uang masuk dan keluar usahamu cukup dengan bicara, foto nota, '
+    'atau ketik.';
+
 class FirstRunView extends StatelessWidget {
   const FirstRunView({super.key, required this.account});
 
@@ -59,6 +66,8 @@ class _FirstRunFormState extends State<_FirstRunForm> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            Text(appPurposeLine, style: textTheme.titleMedium),
+            const SizedBox(height: 24),
             TextField(
               controller: _storeNameController,
               textCapitalization: TextCapitalization.words,
