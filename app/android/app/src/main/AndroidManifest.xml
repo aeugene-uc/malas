@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Release builds talk to the backend too; the debug manifest's copy only serves the Flutter tool. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- The evening reminder is rescheduled after a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
