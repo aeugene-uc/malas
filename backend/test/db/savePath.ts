@@ -85,6 +85,17 @@ test("matchesAKnownNameSilentlyFillsItsPriceAndAddsItToTheTotal", async () => {
   assert.equal(await prisma.item.count({ where: { storeId: owner.storeId, normalisedName: "es teh" } }), 1);
 });
 
+test("acceptsATotalThatAlreadyCountsALineTheServerPrices", async () => {
+  const reply = await save(owner, {
+    businessDate: "2026-10-17",
+    direction: "IN",
+    total: 15000,
+    lines: [{ itemId: null, itemName: "Es teh", categoryId: null, quantity: "3", unit: null, unitPrice: null, lineTotal: null }],
+    payments: [],
+  });
+  assert.deepEqual([reply.body.transaction.total, reply.body.warnings], [15000, []]);
+});
+
 test("savesALineWithNoPriceAndFlagsItemNoPrice", async () => {
   const reply = await save(owner, {
     businessDate: "2026-10-03",

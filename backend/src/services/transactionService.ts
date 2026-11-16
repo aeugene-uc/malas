@@ -174,7 +174,9 @@ async function prepareEntry(tx: Tx, options: { storeId: string; request: SaveReq
   // gap (#260: unknown prices travel as null).
   const knownLineSum = saveRules.sumLineTotals(request.lines.map((line) => ({ lineTotal: line.lineTotal ?? 0 })));
   const serverFilledSum = saveRules.sumLineTotals(pendingLines.filter((_, index) => request.lines[index]?.lineTotal === null));
-  const total = (request.total ?? knownLineSum) + serverFilledSum;
+  const computedLineSum = saveRules.sumLineTotals(pendingLines);
+  // A client that priced those lines itself already counted them in `total`.
+  const total = request.total === computedLineSum ? computedLineSum : (request.total ?? knownLineSum) + serverFilledSum;
   const settled = saveRules.settleTotalGap(pendingLines, total);
   const linesToSave = settled.lines;
   if (settled.extraLineTotal !== null) {
@@ -187,7 +189,7 @@ async function prepareEntry(tx: Tx, options: { storeId: string; request: SaveReq
     total,
     personId,
     linesToSave,
-    hasTotalGap: request.lines.length > 0 && total !== saveRules.sumLineTotals(pendingLines),
+    hasTotalGap: request.lines.length > 0 && total !== computedLineSum,
     duplicateId: await findDuplicate(tx, { storeId, request, businessDate, total, editingId: options.editingId }),
     isLumpSumMix: isSale && (await mixesLumpSumAndItemised(tx, { storeId, businessDate, isItemised: linesToSave.some((line) => line.itemId !== null), editingId: options.editingId })),
     categories,
@@ -443,4 +445,115 @@ async function setDeletedAt(options: { storeId: string; transactionId: string; d
   if (count === 0) {
     throw new ApiError({ code: "NOT_FOUND", message: "Catatan tidak ditemukan" });
   }
+}
+
+// ---- Edit -------------------------------------------------------------------
+
+// §7.5: every edit keeps the earlier version. Payments are not part of an
+// edit, so an edit below what was paid leaves the extra as Kembalikan. The one
+// exception is an entry paid in full on its own day by a single payment (§11),
+// whose payment follows the corrected total: a typo is not money owed back.
+export async function edit(options: { storeId: string; transactionId: string; request: SaveRequest }): Promise<SaveResponse> {
+  const { storeId, transactionId, request } = options;
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.transaction.findFirst({ where: { id: transactionId, storeId, deletedAt: null }, include: { lines: true, payments: true } });
+    if (existing === null) {
+      throw new ApiError({ code: "NOT_FOUND", message: "Catatan tidak ditemukan" });
+    }
+    const keptRequest = { ...request, linkedTransactionId: existing.linkedTransactionId, inputId: existing.inputId };
+    const entry = await prepareEntry(tx, { storeId, request: keptRequest, editingId: transactionId });
+    await tx.editHistory.create({ data: { transactionId, previous: toEditSnapshot(existing) as unknown as Prisma.InputJsonValue } });
+
+    const onlyPayment = existing.payments.length === 1 ? existing.payments[0] : undefined;
+    const wasPaidInFullOnItsDay = onlyPayment !== undefined && onlyPayment.amount === existing.total && onlyPayment.date.getTime() === existing.businessDate.getTime();
+    if (wasPaidInFullOnItsDay) {
+      await tx.payment.update({ where: { id: onlyPayment.id }, data: { amount: entry.total, date: toDbDate(entry.businessDate) } });
+    }
+    await tx.line.deleteMany({ where: { transactionId } });
+    await tx.transaction.update({
+      where: { id: transactionId },
+      data: {
+        businessDate: toDbDate(entry.businessDate),
+        direction: request.direction,
+        total: entry.total,
+        personId: entry.personId,
+        dueDate: request.dueDate === null ? null : toDbDate(request.dueDate),
+        note: request.note,
+      },
+    });
+    const { warnings, newLineIds } = await writeLines(tx, { transactionId, entry });
+    const paidNow = wasPaidInFullOnItsDay ? entry.total : sumAmounts(existing.payments);
+    if (paidNow > entry.total) warnings.push(buildWarning("OVERPAID", { transactionId }));
+    if (entry.duplicateId !== null) warnings.push(buildWarning("DUPLICATE_SUSPECTED", { transactionId: entry.duplicateId }));
+    if (entry.isLumpSumMix) warnings.push(buildWarning("LUMP_SUM_WITH_ITEMISED", { transactionId }));
+    return { transaction: await readSavedRow(tx, { transactionId, newLineIds }), warnings };
+  });
+}
+
+type EditSnapshot = {
+  businessDate: string;
+  direction: Direction;
+  total: number;
+  personId: string | null;
+  dueDate: string | null;
+  note: string | null;
+  lines: { itemId: string | null; categoryId: string | null; quantity: string | null; unit: string | null; unitPrice: number | null; lineTotal: number; discount: number }[];
+  payments: { date: string; amount: number; label: string | null }[];
+};
+
+function toEditSnapshot(transaction: Prisma.TransactionGetPayload<{ include: { lines: true; payments: true } }>): EditSnapshot {
+  return {
+    businessDate: toIsoDate(transaction.businessDate),
+    direction: transaction.direction,
+    total: transaction.total,
+    personId: transaction.personId,
+    dueDate: transaction.dueDate === null ? null : toIsoDate(transaction.dueDate),
+    note: transaction.note,
+    lines: transaction.lines.map((line) => ({
+      itemId: line.itemId,
+      categoryId: line.categoryId,
+      quantity: line.quantity?.toString() ?? null,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+      lineTotal: line.lineTotal,
+      discount: line.discount,
+    })),
+    payments: transaction.payments.map((payment) => ({ date: toIsoDate(payment.date), amount: payment.amount, label: payment.label })),
+  };
+}
+
+// ---- Bayar ------------------------------------------------------------------
+
+export type PaymentJson = { id: string; date: string; amount: number; label: string | null };
+
+// §7.4: Bayar records a full or part payment, today unless a date is given.
+// More than what is left is saved, and the extra shows as Kembalikan (§12).
+export async function pay(options: { storeId: string; transactionId: string; amount: number; date: string | null; label: string | null }): Promise<{ payment: PaymentJson; transaction: TransactionRow; warnings: Warning[] }> {
+  const { storeId, transactionId } = options;
+  return prisma.$transaction(async (tx) => {
+    const transaction = await tx.transaction.findFirst({ where: { id: transactionId, storeId, deletedAt: null }, include: { payments: true, store: true } });
+    if (transaction === null) {
+      throw new ApiError({ code: "NOT_FOUND", message: "Catatan tidak ditemukan" });
+    }
+    const today = resolveBusinessDate({ now: new Date(), timezone: transaction.store.timezone, dayChangeHour: transaction.store.dayChangeHour });
+    const date = options.date ?? today;
+    if (date > today) {
+      throw new ApiError({ code: "VALIDATION_FAILED", message: "Tanggal belum lewat", fields: { date: "Tanggal belum lewat" } });
+    }
+    const payment = await tx.payment.create({ data: { transactionId, date: toDbDate(date), amount: options.amount, label: options.label } });
+    const warnings = sumAmounts(transaction.payments) + options.amount > transaction.total ? [buildWarning("OVERPAID", { transactionId })] : [];
+    const row = toTransactionRow(await tx.transaction.findUniqueOrThrow({ where: { id: transactionId }, select: TRANSACTION_ROW_SELECT }));
+    return { payment: { id: payment.id, date, amount: payment.amount, label: payment.label }, transaction: row, warnings };
+  });
+}
+
+export async function deletePayment(storeId: string, paymentId: string): Promise<void> {
+  const { count } = await prisma.payment.deleteMany({ where: { id: paymentId, transaction: { storeId } } });
+  if (count === 0) {
+    throw new ApiError({ code: "NOT_FOUND", message: "Pembayaran tidak ditemukan" });
+  }
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
