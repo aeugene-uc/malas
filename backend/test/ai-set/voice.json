@@ -1,0 +1,175 @@
+{
+  "today": "2026-11-16",
+  "cases": [
+    {
+      "id": "V01",
+      "note": "spec §7.2 example, saved prices",
+      "transcript": "jual nasi goreng 12, es teh selawe, beli gas 25 ribu, bon Pak Budi 30 ribu",
+      "saved": { "items": [{ "direction": "IN", "name": "nasi goreng", "price": 15000, "unit": "porsi" }, { "direction": "IN", "name": "es teh", "price": 5000 }], "people": ["Pak Budi"] },
+      "drafts": [
+        { "direction": "IN", "paid": "full", "lines": [{ "names": ["nasi goreng"], "quantity": "12", "lineTotal": 180000 }, { "names": ["es teh"], "quantity": "25", "lineTotal": 125000 }] },
+        { "direction": "OUT", "paid": "full", "lines": [{ "names": ["gas"], "quantity": null, "lineTotal": 25000 }] },
+        { "direction": "IN", "paid": 0, "person": "Pak Budi", "lines": [{ "names": null, "quantity": null, "lineTotal": 30000 }] }
+      ]
+    },
+    {
+      "id": "V02",
+      "note": "spoken total wins, §7.3",
+      "transcript": "nasi 2, 25 ribu aja",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": ["nasi"], "quantity": "2", "lineTotal": 25000 }] }]
+    },
+    {
+      "id": "V03",
+      "note": "simplest entry, §4.1",
+      "transcript": "omzet hari ini 1,2 juta",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": null, "quantity": null, "lineTotal": 1200000 }] }]
+    },
+    {
+      "id": "V04",
+      "note": "setengah kilo",
+      "transcript": "beli gula setengah kilo 8 ribu",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": ["gula"], "quantity": "0.5", "lineTotal": 8000 }] }]
+    },
+    {
+      "id": "V05",
+      "note": "kemarin, unit price with satunya, a unit outside §4.1",
+      "transcript": "kemarin jual kopi susu 20 gelas, 18 ribu satunya",
+      "drafts": [{ "direction": "IN", "paid": "full", "businessDate": "2026-11-15", "lines": [{ "names": ["kopi susu"], "quantity": "20", "lineTotal": 360000 }] }]
+    },
+    {
+      "id": "V06",
+      "note": "order with DP",
+      "transcript": "pesanan kue lapis dari Bu Ani 10 loyang, totalnya 1 juta, DP 300 ribu",
+      "drafts": [{ "direction": "IN", "paid": 300000, "person": "Bu Ani", "lines": [{ "names": ["kue lapis"], "quantity": "10", "lineTotal": 1000000 }] }]
+    },
+    {
+      "id": "V07",
+      "note": "supplier tempo with a due date",
+      "transcript": "beli telur 2 kilo 56 ribu di Toko Makmur, tempo seminggu",
+      "drafts": [{ "direction": "OUT", "paid": 0, "person": "Toko Makmur", "dueDate": "2026-11-23", "lines": [{ "names": ["telur"], "quantity": "2", "lineTotal": 56000 }] }]
+    },
+    {
+      "id": "V08",
+      "note": "slang amount",
+      "transcript": "es teh goceng",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": ["es teh"], "quantity": null, "lineTotal": 5000 }] }]
+    },
+    {
+      "id": "V09",
+      "note": "bare quantities, saved prices fill the totals",
+      "transcript": "jual mie ayam 15 porsi, bakso 8, es jeruk 10",
+      "saved": { "items": [{ "direction": "IN", "name": "mie ayam", "price": 12000, "unit": "porsi" }, { "direction": "IN", "name": "bakso", "price": 15000, "unit": "porsi" }, { "direction": "IN", "name": "es jeruk", "price": 6000 }] },
+      "drafts": [
+        {
+          "direction": "IN",
+          "paid": "full",
+          "lines": [
+            { "names": ["mie ayam"], "quantity": "15", "lineTotal": 180000 },
+            { "names": ["bakso"], "quantity": "8", "lineTotal": 120000 },
+            { "names": ["es jeruk"], "quantity": "10", "lineTotal": 60000 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V10",
+      "note": "two expenses",
+      "transcript": "bayar listrik 350 ribu sama beli bensin 30 ribu",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": ["listrik"], "quantity": null, "lineTotal": 350000 }, { "names": ["bensin"], "quantity": null, "lineTotal": 30000 }] }]
+    },
+    {
+      "id": "V11",
+      "note": "Modal masuk",
+      "transcript": "modal masuk 2 juta dari tabungan",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": null, "quantity": null, "lineTotal": 2000000 }] }]
+    },
+    {
+      "id": "V12",
+      "note": "Ambil pribadi",
+      "transcript": "ambil uang 100 ribu buat keperluan rumah",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": null, "quantity": null, "lineTotal": 100000 }] }]
+    },
+    {
+      "id": "V13",
+      "note": "mis-heard by the phone, #169",
+      "transcript": "jual babe rica 5 porsi 25 ribu satunya",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": ["babi rica", "babe rica"], "quantity": "5", "lineTotal": 125000 }] }]
+    },
+    {
+      "id": "V14",
+      "note": "mis-heard filler words before the entry, #169",
+      "transcript": "pembaku tambah beli minyak goreng 2 liter 36 ribu",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": ["minyak goreng", "minyak"], "quantity": "2", "lineTotal": 36000 }] }]
+    },
+    {
+      "id": "V15",
+      "note": "a customer paying an old bon. Known gap: the read makes a new sale instead of a Bayar on the open Piutang",
+      "transcript": "Pak Joko bayar utang 50 ribu",
+      "drafts": [{ "direction": "IN", "paid": "full", "person": "Pak Joko", "lines": [{ "names": null, "quantity": null, "lineTotal": 50000 }] }]
+    },
+    {
+      "id": "V16",
+      "note": "service per kg, unpaid",
+      "transcript": "laundry Bu Siti 3 kilo, 7 ribu per kilo, belum bayar",
+      "drafts": [{ "direction": "IN", "paid": 0, "person": "Bu Siti", "lines": [{ "names": ["laundry", "cuci"], "quantity": "3", "lineTotal": 21000 }] }]
+    },
+    {
+      "id": "V17",
+      "note": "rental income by transfer",
+      "transcript": "sewa kamar dari Mas Andi bulan ini 800 ribu, transfer",
+      "drafts": [{ "direction": "IN", "paid": "full", "person": "Mas Andi", "lines": [{ "names": ["sewa kamar", "sewa", "kamar"], "quantity": null, "lineTotal": 800000 }] }]
+    },
+    {
+      "id": "V18",
+      "note": "bulk purchase in kg",
+      "transcript": "beli beras 25 kilo 325 ribu",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": ["beras"], "quantity": "25", "lineTotal": 325000 }] }]
+    },
+    {
+      "id": "V19",
+      "note": "spelled-out quantities",
+      "transcript": "jual nasi goreng dua belas, es teh lima belas",
+      "saved": { "items": [{ "direction": "IN", "name": "nasi goreng", "price": 15000, "unit": "porsi" }, { "direction": "IN", "name": "es teh", "price": 5000 }] },
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": ["nasi goreng"], "quantity": "12", "lineTotal": 180000 }, { "names": ["es teh"], "quantity": "15", "lineTotal": 75000 }] }]
+    },
+    {
+      "id": "V20",
+      "note": "slang amount first",
+      "transcript": "goban buat bensin",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": ["bensin"], "quantity": null, "lineTotal": 50000 }] }]
+    },
+    {
+      "id": "V21",
+      "note": "bungkus, a unit outside §4.1",
+      "transcript": "jual keripik 20 bungkus, 5 ribu satunya",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": ["keripik"], "quantity": "20", "lineTotal": 100000 }] }]
+    },
+    {
+      "id": "V22",
+      "note": "driver payout",
+      "transcript": "dapat dari Grab hari ini 245 ribu",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": null, "quantity": null, "lineTotal": 245000 }] }]
+    },
+    {
+      "id": "V23",
+      "note": "materials in meters and rolls",
+      "transcript": "beli kain 3 meter 45 ribu, benang 2 gulung 10 ribu",
+      "drafts": [{ "direction": "OUT", "paid": "full", "lines": [{ "names": ["kain"], "quantity": "3", "lineTotal": 45000 }, { "names": ["benang"], "quantity": "2", "lineTotal": 10000 }] }]
+    },
+    {
+      "id": "V24",
+      "note": "QRIS",
+      "transcript": "jual 4 kopi susu 72 ribu bayar pakai qris",
+      "drafts": [{ "direction": "IN", "paid": "full", "lines": [{ "names": ["kopi susu"], "quantity": "4", "lineTotal": 72000 }] }]
+    },
+    {
+      "id": "V25",
+      "note": "yesterday and today in one note",
+      "transcript": "kemarin beli gas 3 tabung 66 ribu, hari ini jual nasi uduk 30 bungkus 8 ribu satunya",
+      "drafts": [
+        { "direction": "OUT", "paid": "full", "businessDate": "2026-11-15", "lines": [{ "names": ["gas"], "quantity": "3", "lineTotal": 66000 }] },
+        { "direction": "IN", "paid": "full", "lines": [{ "names": ["nasi uduk"], "quantity": "30", "lineTotal": 240000 }] }
+      ]
+    }
+  ]
+}
