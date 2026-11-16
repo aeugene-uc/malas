@@ -8,6 +8,7 @@ import '../../model/transaction.dart';
 import '../../viewmodel/beranda_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../format.dart';
+import '../ketik/ketik_view.dart';
 import '../settings/settings_view.dart';
 
 /// Spec §6 Beranda, top to bottom: today's Masuk and Keluar with the
@@ -49,7 +50,16 @@ class _BerandaScreen extends StatelessWidget {
                     ),
                   ),
           ),
-          const _RecordButtons(),
+          _RecordButtons(
+            // Ketik needs the server's business date, so it waits for /home.
+            onKetik: home == null
+                ? null
+                : () => openKetik(
+                    context,
+                    businessToday: home.today.businessDate,
+                    onChanged: viewModel.load,
+                  ),
+          ),
         ],
       ),
     );
@@ -274,9 +284,12 @@ String _describeLine(TransactionLine line) {
   return unit == null ? '$name $quantity' : '$name $quantity $unit';
 }
 
-/// Bicara, Foto and Ketik open their capture screens once F6 and F3 land.
+/// Ketik opens its quick amount. Bicara and Foto open their capture screens
+/// once F6 lands, and hand their read to openDraftScreen.
 class _RecordButtons extends StatelessWidget {
-  const _RecordButtons();
+  const _RecordButtons({required this.onKetik});
+
+  final VoidCallback? onKetik;
 
   @override
   Widget build(BuildContext context) {
@@ -286,10 +299,10 @@ class _RecordButtons extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Row(
           children: [
-            for (final (label, icon) in const [
-              ('Bicara', Icons.mic),
-              ('Foto', Icons.photo_camera),
-              ('Ketik', Icons.keyboard),
+            for (final (label, icon, onPressed) in [
+              ('Bicara', Icons.mic, null),
+              ('Foto', Icons.photo_camera, null),
+              ('Ketik', Icons.keyboard, onKetik),
             ])
               Expanded(
                 child: Padding(
@@ -298,7 +311,7 @@ class _RecordButtons extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(64),
                     ),
-                    onPressed: null,
+                    onPressed: onPressed,
                     icon: Icon(icon),
                     label: Text(label),
                   ),
