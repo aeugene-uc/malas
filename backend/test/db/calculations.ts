@@ -3,14 +3,15 @@ import assert from "node:assert/strict";
 import { randomInt } from "node:crypto";
 import { prisma } from "../../src/db.js";
 import { addDays } from "../../src/services/analytics.js";
-import { getHome, getRankedRows, getSummary } from "../../src/services/analyticsService.js";
+import { getAlerts, getHome, getRankedRows, getSummary } from "../../src/services/analyticsService.js";
 import { resolveBusinessDate } from "../../src/services/businessDate.js";
 import { fixedCategoryRows } from "../../src/services/categories.js";
 import { normaliseName } from "../../src/services/normaliseName.js";
 import { StoreQueries } from "../../src/services/tanyaQueries.js";
 
 // Spec §10 on real rows (S11): which date each figure counts on, what is left
-// out, and that Analisis, Beranda and Tanya give the same numbers. The rules
+// out, and that Analisis, Beranda and Tanya give the same numbers. Also the
+// §7.7 alerts Beranda raises from those rows (S12). The rules
 // that pick dates live in the queries, so these need a database: run them with
 // `npm run test:db` against malas_dev. The file is not named *.test.ts, so
 // `npm test` stays offline. Each run seeds its own two owners and deletes them
@@ -22,7 +23,7 @@ const OCTOBER = { kind: "bulan", offset: 0, from: "2026-10-01", to: "2026-10-31"
 
 type Direction = "IN" | "OUT";
 type Owner = { userId: string; storeId: string; categoryIdByKey: Map<string, string> };
-type LineSeed = { category: string; itemId?: string; quantity?: string; lineTotal: number };
+type LineSeed = { category: string; itemId?: string; quantity?: string; unit?: string; lineTotal: number };
 type EntrySeed = {
   businessDate: string;
   direction: Direction;
@@ -40,8 +41,8 @@ let otherOwner: Owner;
 let today = "";
 
 before(async () => {
-  owner = await createOwner("S11 Warung");
-  otherOwner = await createOwner("S11 Tetangga");
+  owner = await createOwner({ name: "S11 Warung", isAlertsOn: true });
+  otherOwner = await createOwner({ name: "S11 Tetangga", isAlertsOn: false });
   today = resolveBusinessDate({ now: new Date(), timezone: "Asia/Jakarta", dayChangeHour: 4 });
   await seedEntries();
 });
@@ -143,14 +144,35 @@ test("showsTodayOnBerandaFromTodaysPaymentsAndOnlyThisStoresEntries", async () =
 test("showsBerandaCardsOnlyWhenTheyHaveSomething", async () => {
   const { cards } = await getHome(owner.storeId);
   // The store was made today, so no earlier day can be missed.
-  assert.deepEqual(cards, { alerts: [], missedDays: [], piutang: 55_000, utang: 150_000, dueToday: 1, queuedReads: null });
+  assert.deepEqual({ ...cards, alerts: cards.alerts.length }, { alerts: 2, missedDays: [], piutang: 55_000, utang: 150_000, dueToday: 1, queuedReads: null });
+});
+
+test("raisesAPriceRiseAndADueDateOnceLargestFirstWhenBerandaOpens", async () => {
+  await getHome(owner.storeId);
+  const alerts = await getAlerts(owner.storeId);
+  assert.deepEqual(
+    alerts.map((alert) => [alert.rule, alert.message]),
+    [
+      ["DUE_TODAY", "Piutang Pak Budi Rp 25.000 jatuh tempo hari ini"],
+      ["PRICE_RISE", "Harga Gula naik 10%: Rp 14.000 → Rp 15.400 per kg"],
+    ],
+  );
+  // Opening again adds nothing: the same alert does not repeat within 7 days.
+  assert.equal(await prisma.alert.count({ where: { storeId: owner.storeId } }), 2);
+});
+
+test("raisesNoAlertsWhenPeringatanIsOff", async () => {
+  const home = await getHome(otherOwner.storeId);
+  assert.deepEqual(home.cards.alerts, []);
+  assert.equal(await prisma.alert.count({ where: { storeId: otherOwner.storeId } }), 0);
 });
 
 // ---- Seed ------------------------------------------------------------------
 
 async function seedEntries(): Promise<void> {
-  const esTeh = await createItem(owner, "Es teh");
-  const kueLapis = await createItem(owner, "Kue lapis");
+  const esTeh = await createItem(owner, { name: "Es teh", kind: "SOLD" });
+  const kueLapis = await createItem(owner, { name: "Kue lapis", kind: "SOLD" });
+  const gula = await createItem(owner, { name: "Gula", kind: "BOUGHT" });
   const pakBudi = await createPerson(owner, "Pak Budi");
   const tokoA = await createPerson(owner, "Toko A");
   const entries: EntrySeed[] = [
@@ -206,6 +228,19 @@ async function seedEntries(): Promise<void> {
     },
     { businessDate: addDays(today, -1), direction: "IN", total: 60_000, lines: [{ category: "IN:Penjualan", lineTotal: 60_000 }], payments: [{ date: addDays(today, -1), amount: 60_000 }] },
     { businessDate: addDays(today, -3), direction: "IN", total: 25_000, lines: [{ category: "IN:Penjualan", lineTotal: 25_000 }], payments: [], personId: pakBudi, dueDate: today },
+    // Gula from 14.000 to 15.400 a kg this week: a 10% price rise.
+    ...[
+      { daysAgo: 5, quantity: "1", lineTotal: 14_000 },
+      { daysAgo: 2, quantity: "2", lineTotal: 30_800 },
+    ].map(
+      (bought): EntrySeed => ({
+        businessDate: addDays(today, -bought.daysAgo),
+        direction: "OUT",
+        total: bought.lineTotal,
+        lines: [{ category: "OUT:Bahan", itemId: gula, quantity: bought.quantity, unit: "kg", lineTotal: bought.lineTotal }],
+        payments: [{ date: addDays(today, -bought.daysAgo), amount: bought.lineTotal }],
+      }),
+    ),
   ];
   for (const entry of entries) {
     await createEntry(owner, entry);
@@ -220,9 +255,12 @@ async function seedEntries(): Promise<void> {
       payments: [{ date: businessDate, amount: 999_000 }],
     });
   }
+  // The neighbour has Peringatan off, so this due date raises nothing.
+  await createEntry(otherOwner, { businessDate: today, direction: "IN", total: 40_000, lines: [{ category: "IN:Penjualan", lineTotal: 40_000 }], payments: [], dueDate: today });
 }
 
-async function createOwner(name: string): Promise<Owner> {
+async function createOwner(options: { name: string; isAlertsOn: boolean }): Promise<Owner> {
+  const { name } = options;
   const user = await prisma.user.create({
     data: {
       // 0899 is not a real Indonesian prefix, so a test owner can never take a real number.
@@ -230,7 +268,7 @@ async function createOwner(name: string): Promise<Owner> {
       passwordHash: "not-a-password",
       name,
       consentAt: new Date(),
-      stores: { create: { name, businessTypes: ["MAKANAN_MINUMAN"], closedDays: [SUNDAY], categories: { create: fixedCategoryRows() } } },
+      stores: { create: { name, businessTypes: ["MAKANAN_MINUMAN"], closedDays: [SUNDAY], alertsOn: options.isAlertsOn, categories: { create: fixedCategoryRows() } } },
     },
     select: { id: true, stores: { select: { id: true, categories: { select: { id: true, name: true, direction: true } } } } },
   });
@@ -242,9 +280,10 @@ async function createOwner(name: string): Promise<Owner> {
   return { userId: user.id, storeId: store.id, categoryIdByKey };
 }
 
-async function createItem(itemOwner: Owner, name: string): Promise<string> {
+async function createItem(itemOwner: Owner, options: { name: string; kind: "SOLD" | "BOUGHT" }): Promise<string> {
+  const category = options.kind === "SOLD" ? "IN:Penjualan" : "OUT:Bahan";
   const item = await prisma.item.create({
-    data: { storeId: itemOwner.storeId, name, normalisedName: normaliseName(name), kind: "SOLD", categoryId: categoryId(itemOwner, "IN:Penjualan") },
+    data: { storeId: itemOwner.storeId, name: options.name, normalisedName: normaliseName(options.name), kind: options.kind, categoryId: categoryId(itemOwner, category) },
   });
   return item.id;
 }
@@ -270,6 +309,7 @@ async function createEntry(entryOwner: Owner, entry: EntrySeed): Promise<void> {
           itemId: line.itemId ?? null,
           categoryId: categoryId(entryOwner, line.category),
           quantity: line.quantity ?? null,
+          unit: line.unit ?? null,
           lineTotal: line.lineTotal,
         })),
       },

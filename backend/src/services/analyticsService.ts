@@ -13,6 +13,7 @@ import {
   type DateRange,
   type ShareRow,
 } from "./analytics.js";
+import * as alertService from "./alertService.js";
 import { resolveBusinessDate } from "./businessDate.js";
 import { splitPayments, StoreQueries, type NotCountedInProfit } from "./tanyaQueries.js";
 import { TRANSACTION_ROW_SELECT, toTransactionRow, type TransactionRow } from "./transactionRows.js";
@@ -58,6 +59,7 @@ const MAX_ALERTS = 20;
 
 export async function getHome(storeId: string): Promise<HomeJson> {
   const { store, today, closedDays } = await loadStore(storeId);
+  await alertService.refreshAlerts(store, today);
   const queries = new StoreQueries(storeId, closedDays);
   const yesterday = addDays(today, -1);
   const sameDayLastWeek = addDays(today, -7);
@@ -154,12 +156,13 @@ export async function getRankedRows(
 }
 
 export async function getAlerts(storeId: string): Promise<AlertJson[]> {
-  const store = await prisma.store.findUniqueOrThrow({ where: { id: storeId } });
+  const { store, today } = await loadStore(storeId);
+  await alertService.refreshAlerts(store, today);
   return listAlerts(store, MAX_ALERTS);
 }
 
-// Alerts are written by the alert rules (S12). The Peringatan switch in
-// Settings (F9) hides them all.
+// Alerts are written by the alert rules (S12, alertService). The Peringatan
+// switch in Settings (F9) hides them all.
 async function listAlerts(store: Store, limit: number): Promise<AlertJson[]> {
   if (!store.alertsOn) {
     return [];
