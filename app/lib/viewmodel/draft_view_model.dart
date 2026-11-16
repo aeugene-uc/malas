@@ -36,6 +36,7 @@ class DraftViewModel extends ChangeNotifier {
   bool _isSaving = false;
   String? _errorMessage;
 
+  String get businessToday => _businessToday;
   DateChoice get dateChoice => _dateChoice;
   bool get isSaving => _isSaving;
 

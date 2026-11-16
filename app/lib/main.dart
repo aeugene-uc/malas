@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'data/api_client.dart';
 import 'data/auth_repository.dart';
+import 'data/draft_repository.dart';
 import 'data/reminder_scheduler.dart';
 import 'data/store_repository.dart';
 import 'model/account.dart';
@@ -66,6 +67,7 @@ class MalasApp extends StatelessWidget {
           ),
         ),
         Provider(create: (_) => StoreRepository(apiClient)),
+        Provider(create: (_) => DraftRepository(apiClient)),
         ChangeNotifierProvider(
           create: (context) => _startSession(context, scheduleReminder),
         ),
