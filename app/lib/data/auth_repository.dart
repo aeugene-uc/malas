@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../model/account.dart';
 import 'api_client.dart';
+import 'store_repository.dart';
 
 /// Sign-in, first-run setup and consent. The token is kept encrypted on the
 /// phone, so the owner signs in once.
@@ -50,6 +51,7 @@ class AuthRepository {
   Future<void> signOut() async {
     _apiClient.token = null;
     await _secureStorage.delete(key: tokenKey);
+    await _secureStorage.delete(key: StoreRepository.keptCategoriesKey);
   }
 
   Future<void> saveStoreSetup({

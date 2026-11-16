@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/auth_repository.dart';
 import 'package:malas/data/mock_bodies.dart';
+import 'package:malas/data/store_repository.dart';
 import 'package:malas/model/account.dart';
 
 import '../support/recording_adapter.dart';
@@ -68,6 +69,20 @@ void main() {
     await repository.signOut();
 
     expect(await secureStorage.read(key: AuthRepository.tokenKey), isNull);
+  });
+
+  test('signOutForgetsTheCategoriesKeptForKetik', () async {
+    await secureStorage.write(
+      key: StoreRepository.keptCategoriesKey,
+      value: '[]',
+    );
+
+    await repository.signOut();
+
+    expect(
+      await secureStorage.read(key: StoreRepository.keptCategoriesKey),
+      isNull,
+    );
   });
 
   test('savesTheStoreSetupInWireValues', () async {

@@ -67,7 +67,12 @@ class MalasApp extends StatelessWidget {
             secureStorage: const FlutterSecureStorage(),
           ),
         ),
-        Provider(create: (_) => StoreRepository(apiClient)),
+        Provider(
+          create: (_) => StoreRepository(
+            apiClient,
+            secureStorage: const FlutterSecureStorage(),
+          ),
+        ),
         Provider(create: (_) => DraftRepository(apiClient)),
         Provider(
           create: (_) => UnsentDraftsStore(const FlutterSecureStorage()),

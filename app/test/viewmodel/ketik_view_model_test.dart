@@ -119,6 +119,49 @@ void main() {
       60000,
     ]);
   });
+
+  group('opened without signal (Q1 bug 2)', () {
+    late StoreRepository storeRepository;
+    late UnsentDraftsStore store;
+    late KetikViewModel offlineViewModel;
+
+    setUp(() {
+      FlutterSecureStorage.setMockInitialValues({});
+      const secureStorage = FlutterSecureStorage();
+      final apiClient = ApiClient(
+        Dio(BaseOptions(baseUrl: 'http://mock'))..httpClientAdapter = adapter,
+      );
+      storeRepository = StoreRepository(
+        apiClient,
+        secureStorage: secureStorage,
+      );
+      store = UnsentDraftsStore(secureStorage);
+      offlineViewModel = KetikViewModel(
+        storeRepository: storeRepository,
+        draftRepository: DraftRepository(apiClient),
+        businessToday: '2026-11-16',
+        unsentDraftsStore: store,
+      );
+    });
+
+    test(
+      'recordsOnTheCategoriesKeptFromLastTimeAndKeepsTheFailedSave',
+      () async {
+        await storeRepository.fetchCategories();
+        adapter.isOffline = true;
+
+        await offlineViewModel.loadCategories();
+        offlineViewModel.setAmount(75000);
+        await offlineViewModel.simpan();
+
+        expect(offlineViewModel.categoryId, 'cat-1');
+        expect(
+          [for (final unsent in await store.load()) unsent.draft.total],
+          [75000],
+        );
+      },
+    );
+  });
 }
 
 class _KeyRecordingAdapter implements HttpClientAdapter {
@@ -126,12 +169,21 @@ class _KeyRecordingAdapter implements HttpClientAdapter {
   final List<String> saveKeys = [];
   bool isSaveFailing = false;
 
+  /// Every request fails with no response, as on a phone without signal.
+  bool isOffline = false;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) {
+    if (isOffline) {
+      throw DioException.connectionError(
+        requestOptions: options,
+        reason: 'offline',
+      );
+    }
     if (options.method == 'POST' && options.path.endsWith('/transactions')) {
       saveKeys.add(options.headers['Idempotency-Key'] as String);
       if (isSaveFailing) {

@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../model/account.dart';
 import '../model/category.dart';
 import '../model/item.dart';
@@ -5,9 +9,15 @@ import 'api_client.dart';
 
 /// Settings (§6): the store's own fields, its items and its categories.
 class StoreRepository {
-  StoreRepository(this._apiClient);
+  /// Without [secureStorage] nothing is kept on the phone.
+  StoreRepository(this._apiClient, {this._secureStorage});
+
+  /// Signing out deletes it, so the next account on the phone never offers
+  /// this store's categories.
+  static const String keptCategoriesKey = 'categories';
 
   final ApiClient _apiClient;
+  final FlutterSecureStorage? _secureStorage;
 
   /// [reminderTime] null turns the evening reminder off.
   Future<void> saveSettings({
@@ -39,13 +49,26 @@ class StoreRepository {
     ];
   }
 
+  /// Without signal it answers with the categories last fetched on this
+  /// phone, so Ketik still records an amount offline (§12) and a failed save
+  /// is kept for Coba lagi (#25).
   Future<List<Category>> fetchCategories() async {
-    final body = await _apiClient.get('/categories') as Map<String, Object?>;
-    final categoriesJson = body['categories'] as List<Object?>;
-    return [
-      for (final categoryJson in categoriesJson)
-        Category.fromJson(categoryJson as Map<String, Object?>),
-    ];
+    final List<Object?> categoriesJson;
+    try {
+      final body = await _apiClient.get('/categories') as Map<String, Object?>;
+      categoriesJson = body['categories'] as List<Object?>;
+    } on ApiException catch (error) {
+      final kept = error.isNetworkError
+          ? await _secureStorage?.read(key: keptCategoriesKey)
+          : null;
+      if (kept == null) rethrow;
+      return _readCategories(jsonDecode(kept) as List<Object?>);
+    }
+    await _secureStorage?.write(
+      key: keptCategoriesKey,
+      value: jsonEncode(categoriesJson),
+    );
+    return _readCategories(categoriesJson);
   }
 
   Future<void> updateItem({
@@ -59,4 +82,11 @@ class StoreRepository {
       body: {'name': name, 'unit': unit, 'savedPrice': savedPrice},
     );
   }
+}
+
+List<Category> _readCategories(List<Object?> categoriesJson) {
+  return [
+    for (final categoryJson in categoriesJson)
+      Category.fromJson(categoryJson as Map<String, Object?>),
+  ];
 }
