@@ -28,11 +28,17 @@ class SessionViewModel extends ChangeNotifier {
   Account? _account;
   String? _errorMessage;
   bool _isTrialSheetDue = false;
+  bool _isGuidedEntryDue = false;
 
   SessionStage get stage => _stage;
   Account? get account => _account;
   String? get errorMessage => _errorMessage;
   bool get isTrialSheetDue => _isTrialSheetDue;
+
+  /// #33: an owner who has just set up a store is walked through one entry
+  /// on Beranda. Kept in memory only, so it shows in that first session and
+  /// never again.
+  bool get isGuidedEntryDue => _isGuidedEntryDue;
 
   Future<void> start() async {
     _stage = SessionStage.loading;
@@ -59,7 +65,10 @@ class SessionViewModel extends ChangeNotifier {
 
   /// After sign-in, registration or first-run setup.
   Future<void> enter(Account account) async {
+    final hasJustSetUpStore =
+        _stage == SessionStage.firstRun && account.isSetUp;
     _account = account;
+    _isGuidedEntryDue = hasJustSetUpStore;
     _stage = account.isSetUp ? SessionStage.ready : SessionStage.firstRun;
     _isTrialSheetDue =
         account.isSetUp &&
@@ -67,6 +76,13 @@ class SessionViewModel extends ChangeNotifier {
         !await _authRepository.hasSeenTrialSheet();
     notifyListeners();
     if (account.isSetUp) await _scheduleReminder(account.store);
+  }
+
+  /// After the first save, or "Lewati".
+  void finishGuidedEntry() {
+    if (!_isGuidedEntryDue) return;
+    _isGuidedEntryDue = false;
+    notifyListeners();
   }
 
   /// "Keluar" in Settings.

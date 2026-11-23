@@ -94,6 +94,27 @@ void main() {
     expect(session.stage, SessionStage.firstRun);
   });
 
+  test('theGuidedEntryIsDueOnlyRightAfterFirstRunSetupUntilFinished', () async {
+    FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
+    final session = buildSession(now: beforeTrialEnds);
+    final newAccount = Account.fromJson(
+      mockBodiesByRoute['POST /auth/register']! as Map<String, Object?>,
+    );
+    final setUpAccount = Account.fromJson(
+      mockBodiesByRoute['GET /auth/me']! as Map<String, Object?>,
+    );
+
+    await session.start();
+    expect(session.isGuidedEntryDue, isFalse);
+
+    await session.enter(newAccount);
+    await session.enter(setUpAccount);
+    expect(session.isGuidedEntryDue, isTrue);
+
+    session.finishGuidedEntry();
+    expect(session.isGuidedEntryDue, isFalse);
+  });
+
   test('aRejectedTokenLaterSendsTheOwnerBackToSignIn', () async {
     FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
     final session = buildSession(now: beforeTrialEnds);
