@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/api_client.dart';
 import '../data/transaction_repository.dart';
+import '../model/draft.dart';
 import '../model/transaction.dart';
 import '../model/transaction_filter.dart';
 
@@ -123,6 +124,24 @@ class CatatanViewModel extends ChangeNotifier {
       return;
     }
     await load();
+  }
+
+  /// Returns null with [errorMessage] when the server could not build it.
+  Future<AiReadResult?> fetchCopyDraft(
+    Transaction transaction,
+    EntryCopy copy,
+  ) async {
+    _errorMessage = null;
+    try {
+      return await _transactionRepository.fetchCopyDraft(
+        transactionId: transaction.id,
+        copy: copy,
+      );
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<void> _apply(TransactionFilter filter) {

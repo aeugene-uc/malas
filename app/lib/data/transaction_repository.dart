@@ -1,3 +1,4 @@
+import '../model/draft.dart';
 import '../model/transaction.dart';
 import '../model/transaction_filter.dart';
 import 'api_client.dart';
@@ -8,6 +9,16 @@ class TransactionPage {
 
   final List<Transaction> transactions;
   final String? nextCursor;
+}
+
+/// Ulangi copies an entry to today at its old price. Retur takes it back.
+enum EntryCopy {
+  ulangi('repeat'),
+  retur('retur');
+
+  const EntryCopy(this.path);
+
+  final String path;
 }
 
 /// Catatan and Piutang/Utang (§7.4, §7.5). Saving and editing a draft is
@@ -52,6 +63,18 @@ class TransactionRepository {
       '/transactions/$transactionId/payments',
       body: {'amount': amount},
     );
+  }
+
+  /// Ulangi and Retur (§7.4): the server builds the draft, dated today, which
+  /// the draft screen opens. Nothing is saved before Simpan.
+  Future<AiReadResult> fetchCopyDraft({
+    required String transactionId,
+    required EntryCopy copy,
+  }) async {
+    final body = await _apiClient.post(
+      '/transactions/$transactionId/${copy.path}',
+    );
+    return AiReadResult.fromJson(body as Map<String, Object?>);
   }
 
   Future<List<Transaction>> _fetchOpen(String path) async {

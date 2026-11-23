@@ -21,6 +21,10 @@ class MockTransactionStore {
     'DELETE /transactions/:id': _delete,
     'POST /transactions/:id/restore': _restore,
     'POST /transactions/:id/payments': _pay,
+    'POST /transactions/:id/repeat': (MockRequest request) =>
+        _copyDraft(request, isRetur: false),
+    'POST /transactions/:id/retur': (MockRequest request) =>
+        _copyDraft(request, isRetur: true),
     'GET /receivables': _receivables,
     'GET /payables': _payables,
   };
@@ -54,6 +58,55 @@ class MockTransactionStore {
     transaction['remaining'] = (transaction['total']! as int) - paid;
     return {
       'payment': {'id': 'pay-${transaction['id']}', 'amount': amount},
+    };
+  }
+
+  /// The server's Ulangi and Retur drafts: Ulangi at the old price, paid in
+  /// full when the original was; Retur at negative quantities, linked back.
+  Object _copyDraft(MockRequest request, {required bool isRetur}) {
+    final transaction = _find(request.segmentAfter('transactions'));
+    final sign = isRetur ? -1 : 1;
+    final lines = [
+      for (final line
+          in (transaction['lines']! as List<Object?>)
+              .cast<Map<String, Object?>>())
+        {
+          'itemId': _refId(line['item']),
+          'itemName': _refName(line['item']),
+          'categoryId': _refId(line['category']),
+          'quantity': switch (line['quantity']) {
+            final String quantity when isRetur => '-$quantity',
+            final quantity => quantity,
+          },
+          'unit': line['unit'],
+          'unitPrice': null,
+          'lineTotal': sign * (line['lineTotal']! as int),
+        },
+    ];
+    final total = sign * (transaction['total']! as int);
+    final person = transaction['person'] as Map<String, Object?>?;
+    final isPaidInFull = _remaining(transaction) <= 0;
+    return {
+      'drafts': [
+        {
+          'businessDate': _mockToday,
+          'direction': transaction['direction'],
+          'total': total,
+          'personId': person?['id'],
+          'personName': person?['name'],
+          'dueDate': null,
+          'source': 'TYPED',
+          'inputId': null,
+          'note': null,
+          'linkedTransactionId': isRetur ? transaction['id'] : null,
+          'lines': lines,
+          'payments': [
+            if (!isRetur && isPaidInFull)
+              {'date': _mockToday, 'amount': total, 'label': 'cash'},
+          ],
+        },
+      ],
+      'warnings': <Object>[],
     };
   }
 
@@ -129,3 +182,6 @@ String? _refId(Object? ref) => (ref as Map<String, Object?>?)?['id'] as String?;
 
 String? _refName(Object? ref) =>
     (ref as Map<String, Object?>?)?['name'] as String?;
+
+/// The business day the mock Beranda reports.
+const _mockToday = '2026-11-11';
