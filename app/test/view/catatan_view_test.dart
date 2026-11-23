@@ -6,6 +6,7 @@ import 'package:malas/data/api_client.dart';
 import 'package:malas/data/auth_repository.dart';
 import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
+import 'package:malas/data/mock_transaction_store.dart';
 import 'package:malas/data/transaction_repository.dart';
 import 'package:malas/main.dart';
 import 'package:malas/model/draft.dart';
@@ -13,6 +14,8 @@ import 'package:malas/view/catatan/piutang_utang_view.dart';
 import 'package:malas/view/draft/draft_view.dart';
 import 'package:malas/viewmodel/draft_view_model.dart';
 import 'package:provider/provider.dart';
+
+import '../support/recording_adapter.dart';
 
 void main() {
   Future<void> openCatatan(WidgetTester tester) async {
@@ -35,6 +38,40 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('catatanLoadsAgainEachTimeItsTabOpens', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
+    final adapter = RecordingAdapter(
+      bodiesByRoute: {...mockBodiesByRoute, ...MockTransactionStore().routes},
+    );
+    await tester.pumpWidget(
+      MalasApp(
+        apiClient: ApiClient(
+          Dio(BaseOptions(baseUrl: 'http://mock'))..httpClientAdapter = adapter,
+        ),
+        scheduleReminder: (_) async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    int countListLoads() =>
+        adapter.requests.where((r) => r.path == '/transactions').length;
+    Future<void> openTab(String label) async {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text(label),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await openTab('Catatan');
+    final loadsOnFirstOpen = countListLoads();
+    await openTab('Beranda');
+    await openTab('Catatan');
+
+    expect(countListLoads(), loadsOnFirstOpen + 1);
+  });
 
   testWidgets('catatanListsEntriesUnderTheirDates', (tester) async {
     await openCatatan(tester);

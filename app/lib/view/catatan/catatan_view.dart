@@ -5,6 +5,7 @@ import '../../data/api_client.dart';
 import '../../data/transaction_repository.dart';
 import '../../model/transaction.dart';
 import '../../model/transaction_filter.dart';
+import '../../viewmodel/app_shell_view_model.dart';
 import '../../viewmodel/catatan_view_model.dart';
 import '../format.dart';
 import 'entry_detail_sheet.dart';
@@ -43,11 +44,28 @@ class _CatatanScreen extends StatefulWidget {
 
 class _CatatanScreenState extends State<_CatatanScreen> {
   final _searchController = TextEditingController();
+  late final AppShellViewModel _appShell;
+
+  /// The tab stays alive in the shell's IndexedStack, so entries saved or
+  /// paid on Beranda only show once Catatan loads again on opening.
+  @override
+  void initState() {
+    super.initState();
+    _appShell = context.read<AppShellViewModel>()
+      ..addListener(_reloadWhenOpened);
+  }
 
   @override
   void dispose() {
+    _appShell.removeListener(_reloadWhenOpened);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _reloadWhenOpened() {
+    if (_appShell.selectedTab == AppTab.catatan) {
+      context.read<CatatanViewModel>().load();
+    }
   }
 
   @override
@@ -165,7 +183,7 @@ class _EntryList extends StatelessWidget {
       return const Center(child: Text('Belum ada catatan'));
     }
     final rows = _rowsByDate(viewModel.transactions);
-    return NotificationListener<ScrollEndNotification>(
+    final list = NotificationListener<ScrollEndNotification>(
       onNotification: (notification) {
         if (notification.metrics.extentAfter < 200) viewModel.loadMore();
         return false;
@@ -196,6 +214,24 @@ class _EntryList extends StatelessWidget {
           },
         ),
       ),
+    );
+    final message = viewModel.errorMessage;
+    if (message == null) return list;
+    // A reload of what is shown failed: the entries stay, with the error.
+    return Column(
+      children: [
+        ListTile(
+          title: Text(
+            message,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          trailing: TextButton(
+            onPressed: viewModel.load,
+            child: const Text('Coba lagi'),
+          ),
+        ),
+        Expanded(child: list),
+      ],
     );
   }
 }
