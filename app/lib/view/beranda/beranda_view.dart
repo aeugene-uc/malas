@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 import '../../data/api_client.dart';
 import '../../data/home_repository.dart';
 import '../../data/unsent_drafts_store.dart';
+import '../../model/draft.dart';
 import '../../model/home.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/beranda_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
+import '../bicara/bicara_view.dart';
 import '../draft/draft_view.dart';
+import '../foto/foto_view.dart';
 import '../format.dart';
 import '../ketik/ketik_view.dart';
 import '../settings/settings_view.dart';
@@ -55,7 +58,24 @@ class _BerandaScreen extends StatelessWidget {
                   ),
           ),
           _RecordButtons(
-            // Ketik needs the server's business date, so it waits for /home.
+            // All three need the server's business date, so they wait for
+            // /home.
+            onBicara: home == null
+                ? null
+                : () => _readThenOpenDraft(
+                    context,
+                    captureRoute: BicaraView.route(),
+                    businessToday: home.today.businessDate,
+                    onChanged: viewModel.load,
+                  ),
+            onFoto: home == null
+                ? null
+                : () => _readThenOpenDraft(
+                    context,
+                    captureRoute: FotoView.route(),
+                    businessToday: home.today.businessDate,
+                    onChanged: viewModel.load,
+                  ),
             onKetik: home == null
                 ? null
                 : () => openKetik(
@@ -92,6 +112,25 @@ void _reopenUnsentDrafts(
       onChanged: viewModel.load,
     );
   });
+}
+
+/// Bicara or Foto first, then the draft screen with what it read. Backing
+/// out of the capture screen opens nothing.
+Future<void> _readThenOpenDraft(
+  BuildContext context, {
+  required Route<AiReadResult> captureRoute,
+  required String businessToday,
+  required VoidCallback onChanged,
+}) async {
+  final readResult = await Navigator.of(context).push(captureRoute);
+  if (readResult == null || !context.mounted) return;
+  await openDraftScreen(
+    context,
+    drafts: readResult.drafts,
+    warnings: readResult.warnings,
+    businessToday: businessToday,
+    onChanged: onChanged,
+  );
 }
 
 class _FirstLoadState extends StatelessWidget {
@@ -312,10 +351,17 @@ String _describeLine(TransactionLine line) {
   return unit == null ? '$name $quantity' : '$name $quantity $unit';
 }
 
-/// Ketik opens its quick amount. Bicara and Foto open their capture screens
-/// once F6 lands, and hand their read to openDraftScreen.
+/// Ketik opens its quick amount. Bicara and Foto read first, then open the
+/// draft screen with what was read (§8.2).
 class _RecordButtons extends StatelessWidget {
-  const _RecordButtons({required this.onKetik});
+  const _RecordButtons({
+    required this.onBicara,
+    required this.onFoto,
+    required this.onKetik,
+  });
+
+  final VoidCallback? onBicara;
+  final VoidCallback? onFoto;
 
   final VoidCallback? onKetik;
 
@@ -328,8 +374,8 @@ class _RecordButtons extends StatelessWidget {
         child: Row(
           children: [
             for (final (label, icon, onPressed) in [
-              ('Bicara', Icons.mic, null),
-              ('Foto', Icons.photo_camera, null),
+              ('Bicara', Icons.mic, onBicara),
+              ('Foto', Icons.photo_camera, onFoto),
               ('Ketik', Icons.keyboard, onKetik),
             ])
               Expanded(
