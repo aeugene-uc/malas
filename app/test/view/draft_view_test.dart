@@ -62,6 +62,19 @@ void main() {
     expect(changeCount, 2);
   });
 
+  testWidgets('tersimpanClosesByItselfAfterTenSeconds', (tester) async {
+    final adapter = _RecordingAdapter();
+    await _openDraftFromHost(tester, adapter);
+
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 11));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tersimpan'), findsNothing);
+    expect(adapter.deletedCount, 0);
+  });
+
   testWidgets('aFailedSimpanKeepsTheDraftAndOffersCobaLagi', (tester) async {
     final adapter = _RecordingAdapter()..isSaveFailing = true;
     await _openDraftFromHost(tester, adapter);
