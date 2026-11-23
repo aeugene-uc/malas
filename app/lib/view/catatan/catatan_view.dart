@@ -11,7 +11,7 @@ import 'entry_detail_sheet.dart';
 import 'piutang_utang_view.dart';
 
 /// Catatan (§6): every entry by date, search, filters, delete with Batal.
-/// Edit, Ulangi and Retur open the draft screen, which comes with F3.
+/// An entry's Ulangi and Retur open the draft screen (F3).
 class CatatanView extends StatelessWidget {
   const CatatanView({super.key, this.initialFocus});
 

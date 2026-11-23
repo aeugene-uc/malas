@@ -8,7 +8,11 @@ import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/data/transaction_repository.dart';
 import 'package:malas/main.dart';
+import 'package:malas/model/draft.dart';
 import 'package:malas/view/catatan/piutang_utang_view.dart';
+import 'package:malas/view/draft/draft_view.dart';
+import 'package:malas/viewmodel/draft_view_model.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   Future<void> openCatatan(WidgetTester tester) async {
@@ -77,6 +81,40 @@ void main() {
     expect(find.text('Dihapus'), findsOneWidget);
     expect(find.text('Batal'), findsOneWidget);
     expect(find.text('Gas'), findsNothing);
+  });
+
+  Future<Draft> openCopyOfGas(WidgetTester tester, String button) async {
+    await openCatatan(tester);
+    await tester.tap(find.text('Gas'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(button));
+    await tester.pumpAndSettle();
+    // The mock adapter answers on real async, which the test clock does not
+    // run.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pumpAndSettle();
+    final draftScreen = tester.element(find.byType(DraftView));
+    return draftScreen.read<DraftViewModel>().drafts.single;
+  }
+
+  testWidgets('ulangiOpensTheEntryAsAPaidDraftDatedToday', (tester) async {
+    final draft = await openCopyOfGas(tester, 'Ulangi');
+
+    expect(draft.total, 25000);
+    expect(draft.businessDate, '2026-11-11');
+    expect(draft.payments.single.amount, 25000);
+    expect(draft.linkedTransactionId, isNull);
+  });
+
+  testWidgets('returOpensTheEntryTakenBackAndLinkedToIt', (tester) async {
+    final draft = await openCopyOfGas(tester, 'Retur');
+
+    expect(draft.total, -25000);
+    expect(draft.lines.single.lineTotal, -25000);
+    expect(draft.payments, isEmpty);
+    expect(draft.linkedTransactionId, 'trx-2');
   });
 
   testWidgets('piutangUtangShowsKembalikanUnderUtang', (tester) async {

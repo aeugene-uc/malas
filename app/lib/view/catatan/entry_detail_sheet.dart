@@ -1,22 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/transaction_repository.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/catatan_view_model.dart';
+import '../draft/draft_view.dart';
 import '../format.dart';
 import 'catatan_view.dart';
 
-/// One entry's lines and payments (§5.3: details behind a tap). Edit, Ulangi
-/// and Retur join Hapus once the draft screen (F3) exists.
-Future<void> showEntryDetail(BuildContext context, Transaction transaction) {
+/// One entry's lines and payments (§5.3: details behind a tap), with Ulangi,
+/// Retur and Hapus. Ulangi and Retur close the sheet with their choice, and
+/// the draft opens on Catatan, since the sheet's context goes with it.
+Future<void> showEntryDetail(
+  BuildContext context,
+  Transaction transaction,
+) async {
   final viewModel = context.read<CatatanViewModel>();
-  return showModalBottomSheet<void>(
+  final copy = await showModalBottomSheet<EntryCopy>(
     context: context,
     isScrollControlled: true,
     builder: (sheetContext) => ChangeNotifierProvider.value(
       value: viewModel,
       child: _EntryDetail(transaction: transaction),
     ),
+  );
+  if (copy == null || !context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
+  final readResult = await viewModel.fetchCopyDraft(transaction, copy);
+  if (!context.mounted) return;
+  if (readResult == null) {
+    messenger.showSnackBar(SnackBar(content: Text(viewModel.errorMessage!)));
+    return;
+  }
+  await openDraftScreen(
+    context,
+    drafts: readResult.drafts,
+    warnings: readResult.warnings,
+    // The server dates the copy on the store's business day.
+    businessToday: readResult.drafts.first.businessDate!,
+    onChanged: viewModel.load,
   );
 }
 
@@ -64,6 +86,36 @@ class _EntryDetail extends StatelessWidget {
                 child: Text('Jatuh tempo ${formatEntryDate(dueDate)}'),
               ),
             const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: () =>
+                        Navigator.of(context).pop(EntryCopy.ulangi),
+                    icon: const Icon(Icons.replay),
+                    label: const Text('Ulangi'),
+                  ),
+                ),
+                if (_isReturnable(transaction)) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                      ),
+                      onPressed: () =>
+                          Navigator.of(context).pop(EntryCopy.retur),
+                      icon: const Icon(Icons.undo),
+                      label: const Text('Retur'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,
@@ -112,6 +164,11 @@ class _AmountRow extends StatelessWidget {
     );
   }
 }
+
+/// A Retur takes back lines, so a bare amount or a Retur itself has none
+/// to take back.
+bool _isReturnable(Transaction transaction) =>
+    transaction.lines.isNotEmpty && transaction.total > 0;
 
 /// A bare amount with no category still needs something on its row.
 String _lineName(TransactionLine line) {
