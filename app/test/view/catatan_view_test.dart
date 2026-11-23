@@ -73,6 +73,39 @@ void main() {
     expect(countListLoads(), loadsOnFirstOpen + 1);
   });
 
+  testWidgets('berandaLoadsAgainEachTimeItsTabOpens', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
+    final adapter = RecordingAdapter(
+      bodiesByRoute: {...mockBodiesByRoute, ...MockTransactionStore().routes},
+    );
+    await tester.pumpWidget(
+      MalasApp(
+        apiClient: ApiClient(
+          Dio(BaseOptions(baseUrl: 'http://mock'))..httpClientAdapter = adapter,
+        ),
+        scheduleReminder: (_) async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    int countHomeLoads() =>
+        adapter.requests.where((r) => r.path == '/home').length;
+    Future<void> openTab(String label) async {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text(label),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    final loadsAtStart = countHomeLoads();
+    await openTab('Catatan');
+    await openTab('Beranda');
+
+    expect(countHomeLoads(), loadsAtStart + 1);
+  });
+
   testWidgets('catatanListsEntriesUnderTheirDates', (tester) async {
     await openCatatan(tester);
 

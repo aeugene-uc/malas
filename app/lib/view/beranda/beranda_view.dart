@@ -7,6 +7,7 @@ import '../../data/unsent_drafts_store.dart';
 import '../../model/draft.dart';
 import '../../model/home.dart';
 import '../../model/transaction.dart';
+import '../../viewmodel/app_shell_view_model.dart';
 import '../../viewmodel/beranda_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../bicara/bicara_view.dart';
@@ -35,8 +36,36 @@ class BerandaView extends StatelessWidget {
   }
 }
 
-class _BerandaScreen extends StatelessWidget {
+class _BerandaScreen extends StatefulWidget {
   const _BerandaScreen();
+
+  @override
+  State<_BerandaScreen> createState() => _BerandaScreenState();
+}
+
+class _BerandaScreenState extends State<_BerandaScreen> {
+  late final AppShellViewModel _appShell;
+
+  /// The tab stays alive in the shell's IndexedStack, so a Retur, Bayar or
+  /// Hapus made in Catatan only shows once Beranda loads again on opening.
+  @override
+  void initState() {
+    super.initState();
+    _appShell = context.read<AppShellViewModel>()
+      ..addListener(_reloadWhenOpened);
+  }
+
+  @override
+  void dispose() {
+    _appShell.removeListener(_reloadWhenOpened);
+    super.dispose();
+  }
+
+  void _reloadWhenOpened() {
+    if (_appShell.selectedTab == AppTab.beranda) {
+      context.read<BerandaViewModel>().load();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
