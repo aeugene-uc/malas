@@ -51,4 +51,4 @@ backend/   Express + TypeScript + Prisma on MariaDB
 - When the issue is done: rebase the branch onto `main`, push it, and open a pull request into `main` whose description says `Closes #N`. A teammate approves it and Obie's agent runs the checks on it before it merges. The merge closes the issue and moves its card to Done.
 - Announce each pull request in Multiplayr DEPD/App/App with the issue number and which spec §8 flow Obie should test. All team communication goes through Multiplayr.
 - `.env` is never committed. Copy `backend/.env.example`.
-- Commit as yourself.
+- Commit as yourself. Every commit ends with `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, naming the model that wrote it. Pull requests, issues and comments carry no Claude line.
