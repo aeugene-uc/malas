@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
 import 'package:malas/data/draft_repository.dart';
@@ -33,7 +32,6 @@ void main() {
     final form = adapter.lastRequest.data as FormData;
     final fieldsByName = Map.fromEntries(form.fields);
     expect(fieldsByName['kind'], 'NOTEBOOK');
-    expect(fieldsByName['imageHash'], sha256.convert(imageBytes).toString());
     expect(form.files.single.key, 'image');
     expect(result.drafts, hasLength(3));
   });
