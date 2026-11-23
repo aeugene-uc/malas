@@ -18,6 +18,7 @@ class CatatanViewModel extends ChangeNotifier {
 
   TransactionFilter _filter;
   List<Transaction> _transactions = const [];
+  TransactionFilter? _shownFilter;
   String? _nextCursor;
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -42,10 +43,13 @@ class CatatanViewModel extends ChangeNotifier {
       // A reply for a filter the owner already changed is dropped.
       if (requestedFilter != _filter) return;
       _transactions = page.transactions;
+      _shownFilter = requestedFilter;
       _nextCursor = page.nextCursor;
     } on ApiException catch (error) {
       if (requestedFilter != _filter) return;
       _errorMessage = error.message;
+      // Entries for another search or filter would pass as its results.
+      if (requestedFilter != _shownFilter) _transactions = const [];
     } finally {
       if (requestedFilter == _filter) {
         _isLoading = false;
@@ -88,7 +92,9 @@ class CatatanViewModel extends ChangeNotifier {
   }
 
   Future<void> search(String query) {
-    if (query.trim() == _filter.query.trim()) return Future.value();
+    final isUnchanged = query.trim() == _filter.query.trim();
+    // The same search runs again after it failed, as a retry.
+    if (isUnchanged && _errorMessage == null) return Future.value();
     return _apply(_filter.copyWith(query: query));
   }
 

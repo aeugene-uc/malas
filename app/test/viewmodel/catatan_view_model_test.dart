@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/api_client.dart';
@@ -9,6 +11,7 @@ import 'package:malas/viewmodel/catatan_view_model.dart';
 import 'package:malas/viewmodel/piutang_utang_view_model.dart';
 
 import '../support/recording_adapter.dart';
+import '../support/status_adapter.dart';
 
 void main() {
   late RecordingAdapter adapter;
@@ -25,6 +28,42 @@ void main() {
   }
 
   group('Catatan', () {
+    CatatanViewModel buildFlaky(_FlakyAdapter flaky) => CatatanViewModel(
+      transactionRepository: TransactionRepository(
+        ApiClient(
+          Dio(BaseOptions(baseUrl: 'http://mock'))..httpClientAdapter = flaky,
+        ),
+      ),
+    );
+
+    test('aFailedSearchShowsNoEntriesFromBeforeAndRetriesTheSameText', () async {
+      final flaky = _FlakyAdapter();
+      final viewModel = buildFlaky(flaky);
+      await viewModel.load();
+
+      flaky.isFailing = true;
+      await viewModel.search('ani');
+      expect(viewModel.transactions, isEmpty);
+      expect(viewModel.errorMessage, isNotNull);
+
+      flaky.isFailing = false;
+      await viewModel.search('ani');
+      expect(viewModel.errorMessage, isNull);
+      expect(flaky.recording.lastRequest.queryParameters, {'q': 'ani'});
+    });
+
+    test('aFailedReloadKeepsTheEntriesItWasShowing', () async {
+      final flaky = _FlakyAdapter();
+      final viewModel = buildFlaky(flaky);
+      await viewModel.load();
+
+      flaky.isFailing = true;
+      await viewModel.load();
+
+      expect(viewModel.transactions, hasLength(5));
+      expect(viewModel.errorMessage, isNotNull);
+    });
+
     test('opensOnEveryEntryOrOnTheAnalisisRowItCameFrom', () async {
       final everything = CatatanViewModel(
         transactionRepository: buildRepository(),
@@ -159,4 +198,25 @@ void main() {
       expect(adapter.requests, hasLength(requestCount));
     });
   });
+}
+
+/// Answers from the sample bodies, or fails while [isFailing].
+class _FlakyAdapter implements HttpClientAdapter {
+  final recording = RecordingAdapter(bodiesByRoute: mockBodiesByRoute);
+  final _failing = StatusAdapter(500);
+  bool isFailing = false;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) => (isFailing ? _failing : recording).fetch(
+    options,
+    requestStream,
+    cancelFuture,
+  );
+
+  @override
+  void close({bool force = false}) {}
 }
