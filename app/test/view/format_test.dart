@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:malas/model/transaction.dart';
 import 'package:malas/view/format.dart';
 
 void main() {
@@ -17,6 +18,30 @@ void main() {
 
     test('putsTheMinusBeforeRp', () {
       expect(formatRupiah(-60000), '-Rp 60.000');
+    });
+  });
+
+  group('formatEntryTotal', () {
+    Transaction entry(String direction, int total) => Transaction.fromJson({
+      'id': 't',
+      'businessDate': '2026-11-23',
+      'direction': direction,
+      'total': total,
+      'paid': total,
+      'remaining': 0,
+      'editCount': 0,
+      'hasRetur': false,
+      'lines': <Object>[],
+    });
+
+    test('signsAnEntryByWhatItDidToTheMoney', () {
+      expect(formatEntryTotal(entry('IN', 50000)), '+Rp 50.000');
+      expect(formatEntryTotal(entry('OUT', 50000)), '-Rp 50.000');
+    });
+
+    test('turnsTheSignForAReturWithOneMinusOnly', () {
+      expect(formatEntryTotal(entry('OUT', -50000)), '+Rp 50.000');
+      expect(formatEntryTotal(entry('IN', -50000)), '-Rp 50.000');
     });
   });
 

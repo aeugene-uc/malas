@@ -329,7 +329,6 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMasuk = entry.direction == Direction.masuk;
-    final sign = isMasuk ? '+' : '-';
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(isMasuk ? Icons.south_west : Icons.north_east),
@@ -337,7 +336,7 @@ class _EntryTile extends StatelessWidget {
       subtitle: entry.isFullyPaid
           ? null
           : Text('Sisa ${formatRupiah(entry.remaining)}'),
-      trailing: Text('$sign${formatRupiah(entry.total)}'),
+      trailing: Text(formatEntryTotal(entry)),
     );
   }
 }

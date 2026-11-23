@@ -232,9 +232,7 @@ class _EntryTile extends StatelessWidget {
         leading: Icon(isMasuk ? Icons.south_west : Icons.north_east),
         title: Text(describeEntry(transaction)),
         subtitle: tags.isEmpty ? null : Text(tags.join(' · ')),
-        trailing: Text(
-          '${isMasuk ? '+' : '-'}${formatRupiah(transaction.total)}',
-        ),
+        trailing: Text(formatEntryTotal(transaction)),
         onTap: () => showEntryDetail(context, transaction),
       ),
     );

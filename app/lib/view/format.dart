@@ -8,6 +8,15 @@ String formatRupiah(int amount) {
   return '${sign}Rp ${groupThousands(amount.abs())}';
 }
 
+/// An entry's total by what it did to the owner's money: Masuk adds and
+/// Keluar takes away. A Retur has a negative total, so it turns the sign.
+String formatEntryTotal(Transaction entry) {
+  final effect = entry.direction == Direction.masuk
+      ? entry.total
+      : -entry.total;
+  return '${effect < 0 ? '-' : '+'}${formatRupiah(effect.abs())}';
+}
+
 /// `1200000` as `1.200.000`.
 String groupThousands(int amount) {
   final digits = amount.toString();
