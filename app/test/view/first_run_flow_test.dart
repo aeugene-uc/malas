@@ -41,6 +41,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppShell), findsOneWidget);
+    expect(find.text('Catat penjualan pertama'), findsOneWidget);
+  });
+
+  testWidgets('theGuidedEntryEndsWithTheFirstSave', (tester) async {
+    await _setUpANewStore(tester);
+    expect(find.text('Catat penjualan pertama'), findsOneWidget);
+
+    await tester.tap(find.text('Ketik'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '30000');
+    await tester.pump();
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+
+    // Ketik has closed, so Beranda is the screen on top again.
+    expect(find.text('Tersimpan'), findsOneWidget);
+    expect(find.text('Catat penjualan pertama'), findsNothing);
+    // Let the Batal toast run out, so no timer outlives the test.
+    await tester.pump(const Duration(seconds: 11));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('lewatiEndsTheGuidedEntry', (tester) async {
+    await _setUpANewStore(tester);
+
+    await tester.tap(find.text('Lewati'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Catat penjualan pertama'), findsNothing);
   });
 
   testWidgets('masukWithASetUpStoreOpensBeranda', (tester) async {
@@ -59,6 +88,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppShell), findsOneWidget);
+    expect(find.text('Catat penjualan pertama'), findsNothing);
   });
 
   for (final (buttonLabel, expectedPlan) in [
@@ -92,3 +122,27 @@ void main() {
 }
 
 Finder _field(String label) => find.widgetWithText(TextField, label);
+
+/// Daftar, then first-run setup, ending on Beranda.
+Future<void> _setUpANewStore(WidgetTester tester) async {
+  FlutterSecureStorage.setMockInitialValues({});
+  await tester.pumpWidget(
+    MalasApp(
+      apiClient: buildApiClient(baseUrl: ''),
+      scheduleReminder: (_) async {},
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Daftar').first);
+  await tester.pumpAndSettle();
+  await tester.enterText(_field('Nama'), 'Pak Budi');
+  await tester.enterText(_field('Nomor HP'), '081298765432');
+  await tester.enterText(_field('Kata sandi'), 'rahasia');
+  await tester.tap(find.widgetWithText(FilledButton, 'Daftar'));
+  await tester.pumpAndSettle();
+  await tester.enterText(_field('Nama usaha'), 'Warung Pak Budi');
+  await tester.tap(find.text('Makanan & minuman'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Setuju dan mulai'));
+  await tester.pumpAndSettle();
+}
