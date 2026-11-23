@@ -34,6 +34,9 @@ ApiClient buildApiClient({required String baseUrl}) {
       connectTimeout: const Duration(seconds: 10),
       // An AI read can take up to 20 s, then the backend retries once (§12).
       receiveTimeout: const Duration(seconds: 45),
+      // A photo upload on a weak signal otherwise sat on "Membaca…" for over
+      // ten minutes (#464); the compressed photo is well under a megabyte.
+      sendTimeout: const Duration(seconds: 30),
     ),
   );
   if (isMock) {
