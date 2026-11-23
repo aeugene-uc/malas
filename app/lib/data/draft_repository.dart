@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 
 import '../model/draft.dart';
@@ -21,16 +20,14 @@ class DraftRepository {
     return AiReadResult.fromJson(body as Map<String, Object?>);
   }
 
-  /// The server compares [imageHash] with earlier photos, so the same nota
-  /// sent twice gets a soft duplicate warning (§7.3).
+  /// The server hashes the photo itself, so the same nota sent twice gets a
+  /// soft duplicate warning (§7.3).
   Future<AiReadResult> readPhoto({
     required PhotoKind kind,
     required Uint8List imageBytes,
   }) async {
-    final imageHash = sha256.convert(imageBytes).toString();
     final form = FormData.fromMap({
       'kind': kind.wireValue,
-      'imageHash': imageHash,
       'image': MultipartFile.fromBytes(imageBytes, filename: 'foto.jpg'),
     });
     final body = await _apiClient.post('/ai/read', body: form);
