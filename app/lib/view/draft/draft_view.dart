@@ -61,6 +61,8 @@ Future<void> showBatalToast(
         SnackBar(
           content: const Text('Tersimpan'),
           duration: const Duration(seconds: 10),
+          // Flutter keeps a toast with an action open until tapped otherwise.
+          persist: false,
           action: SnackBarAction(label: 'Batal', onPressed: () {}),
         ),
       )
