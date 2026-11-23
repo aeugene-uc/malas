@@ -19,6 +19,7 @@ class DraftViewModel extends ChangeNotifier {
     required this.drafts,
     this.warnings = const [],
     this._unsentDraftsStore,
+    this.editingTransactionId,
     List<String>? idempotencyKeys,
     bool isUnsent = false,
   }) : _idempotencyKeys =
@@ -41,6 +42,11 @@ class DraftViewModel extends ChangeNotifier {
 
   final List<Draft> drafts;
   final List<ReadWarning> warnings;
+
+  /// Set by Ubah: Simpan replaces this entry instead of adding one.
+  final String? editingTransactionId;
+
+  bool get isEditing => editingTransactionId != null;
 
   /// One key per draft, made when the draft opens, so every retry of its
   /// Simpan reuses it and the server can't record it twice.
@@ -117,10 +123,16 @@ class DraftViewModel extends ChangeNotifier {
     try {
       for (var index = 0; index < drafts.length; index++) {
         if (_saveResults[index] != null) continue;
-        _saveResults[index] = await _draftRepository.save(
-          drafts[index],
-          idempotencyKey: _idempotencyKeys[index],
-        );
+        _saveResults[index] = switch (editingTransactionId) {
+          final transactionId? => await _draftRepository.edit(
+            transactionId,
+            drafts[index],
+          ),
+          null => await _draftRepository.save(
+            drafts[index],
+            idempotencyKey: _idempotencyKeys[index],
+          ),
+        };
       }
     } on ApiException catch (error) {
       _errorMessage = error.message;

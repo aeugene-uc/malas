@@ -45,6 +45,16 @@ class DraftRepository {
     return SaveResult.fromJson(body as Map<String, Object?>);
   }
 
+  /// Simpan after Ubah: the server replaces the entry and keeps the old one
+  /// in its history (§8.4).
+  Future<SaveResult> edit(String transactionId, Draft draft) async {
+    final body = await _apiClient.patch(
+      '/transactions/$transactionId',
+      body: draft.toJson(),
+    );
+    return SaveResult.fromJson(body as Map<String, Object?>);
+  }
+
   /// Batal on the toast after Simpan. The server soft-deletes, so nothing is
   /// lost if the owner meant to keep it after all.
   Future<void> delete(String transactionId) async {

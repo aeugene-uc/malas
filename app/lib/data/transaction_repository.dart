@@ -77,6 +77,16 @@ class TransactionRepository {
     return AiReadResult.fromJson(body as Map<String, Object?>);
   }
 
+  Future<List<EditRecord>> fetchHistory(String transactionId) async {
+    final body = await _apiClient.get(
+      '/transactions/$transactionId/history',
+    ) as Map<String, Object?>;
+    return [
+      for (final recordJson in body['history'] as List<Object?>)
+        EditRecord.fromJson(recordJson as Map<String, Object?>),
+    ];
+  }
+
   Future<List<Transaction>> _fetchOpen(String path) async {
     final body = await _apiClient.get(path) as Map<String, Object?>;
     return _readTransactions(body['rows']);
