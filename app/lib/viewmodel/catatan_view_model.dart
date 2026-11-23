@@ -151,6 +151,18 @@ class CatatanViewModel extends ChangeNotifier {
   }
 
   /// Null when it failed; [errorMessage] says why.
+  Future<String?> fetchBusinessToday() async {
+    _errorMessage = null;
+    try {
+      return await _transactionRepository.fetchBusinessToday();
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Null when it failed; [errorMessage] says why.
   Future<List<EditRecord>?> fetchHistory(Transaction transaction) async {
     _errorMessage = null;
     try {

@@ -30,11 +30,18 @@ Future<void> showEntryDetail(
     ),
   );
   if (choice == null || !context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
   if (choice == _DraftChoice.ubah) {
+    final businessToday = await viewModel.fetchBusinessToday();
+    if (!context.mounted) return;
+    if (businessToday == null) {
+      messenger.showSnackBar(SnackBar(content: Text(viewModel.errorMessage!)));
+      return;
+    }
     await openDraftScreen(
       context,
       drafts: [Draft.fromTransaction(transaction)],
-      businessToday: transaction.businessDate,
+      businessToday: businessToday,
       onChanged: viewModel.load,
       editingTransactionId: transaction.id,
     );
@@ -43,7 +50,6 @@ Future<void> showEntryDetail(
   final copy = choice == _DraftChoice.ulangi
       ? EntryCopy.ulangi
       : EntryCopy.retur;
-  final messenger = ScaffoldMessenger.of(context);
   final readResult = await viewModel.fetchCopyDraft(transaction, copy);
   if (!context.mounted) return;
   if (readResult == null) {

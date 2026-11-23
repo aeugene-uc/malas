@@ -191,6 +191,11 @@ void main() {
   Future<void> editGasTo30000(WidgetTester tester) async {
     final draft = await openCopyOfGas(tester, 'Ubah');
     expect(draft.businessDate, '2026-11-15');
+    // Gas is from 15 Nov and the mock's today is 11 Nov.
+    expect(
+      tester.element(find.byType(DraftView)).read<DraftViewModel>().dateChoice,
+      DateChoice.pilihTanggal,
+    );
     tester
         .element(find.byType(DraftView))
         .read<DraftViewModel>()
