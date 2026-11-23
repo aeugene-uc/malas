@@ -8,8 +8,9 @@ import '../data/api_client.dart';
 import '../model/draft.dart';
 
 /// Bicara (§7.2): tap to start, tap to stop, "Tambah" adds another part.
-/// Android ends a recognition at a short pause, so a long note is several
-/// parts, joined with a newline when it is read.
+/// Android ends a recognition at a short pause, so until the owner taps
+/// Berhenti each pause finishes a part and listening starts again. The parts
+/// are joined with a newline when they are read.
 class BicaraViewModel extends ChangeNotifier {
   BicaraViewModel({required this._speech, required this._draftRepository});
 
@@ -19,6 +20,7 @@ class BicaraViewModel extends ChangeNotifier {
   final List<String> _finishedParts = [];
   String _currentPart = '';
   bool _isListening = false;
+  bool _isStopRequested = false;
   bool _isReading = false;
   String? _errorMessage;
 
@@ -44,20 +46,16 @@ class BicaraViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    _isStopRequested = false;
     _isListening = true;
     notifyListeners();
-    await _speech.listen(
-      onResult: _onResult,
-      listenOptions: SpeechListenOptions(
-        localeId: 'id_ID',
-        listenMode: ListenMode.dictation,
-      ),
-    );
+    await _listen();
   }
 
   /// The recogniser still delivers the final words of this part after it
   /// stops, so the part is finished by [_onResult] or [_onStatus], not here.
   Future<void> stopListening() async {
+    _isStopRequested = true;
     await _speech.stop();
     _isListening = false;
     notifyListeners();
@@ -81,29 +79,47 @@ class BicaraViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> _listen() async {
+    await _speech.listen(
+      onResult: _onResult,
+      listenOptions: SpeechListenOptions(
+        localeId: 'id_ID',
+        listenMode: ListenMode.dictation,
+      ),
+    );
+  }
+
   void _onResult(SpeechRecognitionResult result) {
     _currentPart = result.recognizedWords;
-    if (result.finalResult) {
-      _finishCurrentPart();
-    } else {
-      notifyListeners();
-    }
+    if (result.finalResult) _finishCurrentPart();
+    notifyListeners();
   }
 
   void _onStatus(String status) {
-    if (status == SpeechToText.doneStatus) _finishCurrentPart();
+    if (status == SpeechToText.doneStatus) _onRecognitionEnded();
   }
 
   void _onError(SpeechRecognitionError error) {
-    _errorMessage = 'Suara tidak terbaca';
+    if (!_silenceErrors.contains(error.errorMsg)) {
+      _errorMessage = 'Suara tidak terbaca';
+      _isStopRequested = true;
+    }
+  }
+
+  /// The recogniser reports "done" after every recognition, an error too.
+  void _onRecognitionEnded() {
     _finishCurrentPart();
+    if (_isStopRequested) _isListening = false;
+    notifyListeners();
+    if (!_isStopRequested) _listen();
   }
 
   void _finishCurrentPart() {
     final finishedPart = _currentPart.trim();
     if (finishedPart.isNotEmpty) _finishedParts.add(finishedPart);
     _currentPart = '';
-    _isListening = false;
-    notifyListeners();
   }
 }
+
+/// What Android reports when the owner simply paused, not a failure.
+const _silenceErrors = {'error_speech_timeout', 'error_no_match'};

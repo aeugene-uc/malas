@@ -57,14 +57,34 @@ void main() {
     expect(viewModel.isListening, isFalse);
   });
 
-  test('finishesThePartWhenTheRecogniserStopsAtAPause', () async {
+  test('keepsListeningAfterAPauseUntilBerhenti', () async {
     final viewModel = buildViewModel();
 
     await viewModel.startListening();
     speech.hear('jual kopi 3', isFinal: false);
+    speech.reportError('error_speech_timeout');
+    speech.reportStatus(SpeechToText.doneStatus);
+    speech.hear('beli gula', isFinal: true);
+    await viewModel.stopListening();
+    speech.reportStatus(SpeechToText.doneStatus);
+
+    expect(viewModel.transcriptParts, ['jual kopi 3', 'beli gula']);
+    expect(speech.listenCount, 2);
+    expect(viewModel.errorMessage, isNull);
+    expect(viewModel.isListening, isFalse);
+  });
+
+  test('stopsWithAMessageWhenTheRecogniserFails', () async {
+    final viewModel = buildViewModel();
+
+    await viewModel.startListening();
+    speech.hear('jual kopi 3', isFinal: false);
+    speech.reportError('error_network');
     speech.reportStatus(SpeechToText.doneStatus);
 
     expect(viewModel.transcriptParts, ['jual kopi 3']);
+    expect(speech.listenCount, 1);
+    expect(viewModel.errorMessage, 'Suara tidak terbaca');
     expect(viewModel.isListening, isFalse);
   });
 

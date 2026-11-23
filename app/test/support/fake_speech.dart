@@ -1,11 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 /// Stands in for the platform recogniser. A test says what was heard.
 class FakeSpeech extends Fake implements SpeechToText {
   bool isMicrophoneAvailable = true;
+  int listenCount = 0;
   SpeechStatusListener? _onStatus;
+  SpeechErrorListener? _onError;
   SpeechResultListener? _onResult;
 
   @override
@@ -17,6 +20,7 @@ class FakeSpeech extends Fake implements SpeechToText {
     List<SpeechConfigOption>? options,
   }) async {
     _onStatus = onStatus;
+    _onError = onError;
     return isMicrophoneAvailable;
   }
 
@@ -34,6 +38,7 @@ class FakeSpeech extends Fake implements SpeechToText {
     dynamic sampleRate = 0,
     SpeechListenOptions? listenOptions,
   }) async {
+    listenCount++;
     _onResult = onResult;
   }
 
@@ -50,4 +55,7 @@ class FakeSpeech extends Fake implements SpeechToText {
   }
 
   void reportStatus(String status) => _onStatus!(status);
+
+  void reportError(String errorMsg) =>
+      _onError!(SpeechRecognitionError(errorMsg, true));
 }

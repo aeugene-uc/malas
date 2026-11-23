@@ -40,6 +40,7 @@ void main() {
     );
     await viewModel.startListening();
     speech.hear('jual nasi goreng 12', isFinal: true);
+    await viewModel.stopListening();
 
     final popped = await _openReadAndWait(
       tester,
