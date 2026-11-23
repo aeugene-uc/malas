@@ -48,7 +48,7 @@ backend/   Express + TypeScript + Prisma on MariaDB
 - One branch per issue (`f6-capture`, `f12-guided-entry`).
 - Commits are small and sequential: each one builds, and each one does one step.
 - Each issue on the [MALAS board](https://github.com/users/aeugene-uc/projects/1) has a Sprint and Points (1, 2, 3, 5, 8). Set its card to In Progress when you start.
-- When the issue is done: rebase the branch onto `main`, push it, and open a pull request into `main` whose description says `Closes #N`. A teammate approves it and Obie's agent runs the checks on it before it merges. The merge closes the issue and moves its card to Done.
+- When the issue is done: rebase the branch onto `main`, push it, and open a pull request into `main` whose description says `Closes #N`. A teammate approves it and Obie's agent runs the checks on it before it merges. The approval is the go: the author merges once the PR is approved. The merge closes the issue and moves its card to Done.
 - Announce each pull request in Multiplayr DEPD/App/App with the issue number and which spec §8 flow Obie should test. All team communication goes through Multiplayr.
 - `.env` is never committed. Copy `backend/.env.example`.
 - Commit as yourself. Every commit ends with `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, naming the model that wrote it. Pull requests, issues and comments carry no Claude line.
