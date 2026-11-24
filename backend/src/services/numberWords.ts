@@ -23,6 +23,8 @@ const rupiahBySlang: Record<string, number> = {
   goban: 50_000,
 };
 
+export const RUPIAH_SLANG = Object.keys(rupiahBySlang);
+
 const valueByWord: Record<string, number> = {
   nol: 0,
   satu: 1,
