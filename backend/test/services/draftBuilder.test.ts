@@ -51,6 +51,12 @@ test("readsSelaweAfterAnItemAsAQuantityEvenWhenTheModelCallsItAnAmount", () => {
   assert.equal(line?.lineTotal, null);
 });
 
+test("readsASlangAmountAsMoneyEvenWhenTheModelCallsItAQuantity", () => {
+  const { drafts } = build([heard({ direction: "OUT", name: "bensin", quantityText: "goban" })]);
+  const line = drafts[0]?.lines[0];
+  assert.deepEqual([line?.lineTotal, line?.quantity], [50_000, null]);
+});
+
 test("keepsAmountsWithRibuJutaSlangOrThousandsDotsAsMoney", () => {
   for (const [amountText, expected] of [["25 ribu", 25_000], ["ceban", 10_000], ["25.000", 25_000], ["500000", 500_000], ["1,2 juta", 1_200_000]] as const) {
     const line = build([heard({ name: "x", amountText })]).drafts[0]?.lines[0];
