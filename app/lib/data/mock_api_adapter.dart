@@ -7,6 +7,9 @@ import 'package:dio/dio.dart';
 /// can be built before the backend routes exist. A route key is
 /// `"METHOD /path"`, and a path segment starting with `:` matches any value
 /// (`"GET /transactions/:id"`).
+///
+/// A route's value is either a fixed body or a [MockHandler], which builds
+/// the body from the request, so a mock can remember a delete or a payment.
 class MockApiAdapter implements HttpClientAdapter {
   MockApiAdapter({required this.bodiesByRoute, this.basePath = ''});
 
@@ -32,7 +35,13 @@ class MockApiAdapter implements HttpClientAdapter {
       });
     }
     final statusCode = options.method == 'POST' ? 201 : 200;
-    return _jsonResponse(statusCode, bodiesByRoute[routeKey]!);
+    final body = switch (bodiesByRoute[routeKey]!) {
+      final MockHandler handler => handler(
+        MockRequest(path: requestPath, options: options),
+      ),
+      final fixedBody => fixedBody,
+    };
+    return _jsonResponse(statusCode, body);
   }
 
   @override
@@ -71,4 +80,26 @@ ResponseBody _jsonResponse(int statusCode, Object body) {
       Headers.contentTypeHeader: [Headers.jsonContentType],
     },
   );
+}
+
+/// Builds a mock reply from the request.
+typedef MockHandler = Object Function(MockRequest request);
+
+class MockRequest {
+  const MockRequest({required this.path, required this.options});
+
+  /// The path without the base path, e.g. `/transactions/trx-1/restore`.
+  final String path;
+  final RequestOptions options;
+
+  Map<String, Object?> get query => options.queryParameters;
+
+  Map<String, Object?> get body =>
+      (options.data as Map<String, Object?>?) ?? const {};
+
+  /// The path segment after [segment], e.g. the id after `transactions`.
+  String segmentAfter(String segment) {
+    final segments = path.split('/');
+    return segments[segments.indexOf(segment) + 1];
+  }
 }

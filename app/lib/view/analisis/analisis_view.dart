@@ -5,8 +5,10 @@ import 'package:share_plus/share_plus.dart';
 import '../../data/analytics_repository.dart';
 import '../../data/api_client.dart';
 import '../../model/analytics.dart';
+import '../../model/transaction_filter.dart';
 import '../../viewmodel/analisis_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
+import '../catatan/catatan_view.dart';
 import '../format.dart';
 import 'analisis_pdf.dart';
 import 'analisis_text.dart';
@@ -291,6 +293,18 @@ class _RankedList extends StatelessWidget {
         _SectionTitle(title),
         for (final row in rows)
           ListTile(
+            onTap: switch (row.id) {
+              null => null,
+              final id => () => Navigator.of(context).push(
+                CatatanView.route(
+                  FilterFocus(
+                    kind: row.isItem ? FocusKind.item : FocusKind.category,
+                    id: id,
+                    name: row.name,
+                  ),
+                ),
+              ),
+            },
             title: Text(row.name),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),

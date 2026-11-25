@@ -181,21 +181,29 @@ class RankedRow {
     required this.name,
     required this.amount,
     required this.share,
+    this.isItem = false,
   });
 
   factory RankedRow.fromJson(Map<String, Object?> json) {
     return RankedRow(
-      id: json['id'] as String,
+      id: json['id'] as String?,
       name: json['name'] as String,
       amount: json['amount'] as int,
       share: (json['share'] as num).toDouble(),
+      isItem: json['kind'] == 'item',
     );
   }
 
-  final String id;
+  /// Null for "Tanpa kategori", which is no real category and can't be
+  /// filtered on.
+  final String? id;
   final String name;
   final int amount;
 
   /// A fraction of the period's total, `0.25` for a quarter.
   final double share;
+
+  /// Money out lists categories and expense items together (§7.6), so each
+  /// row says which it is: `kind: "item"`, otherwise a category.
+  final bool isItem;
 }

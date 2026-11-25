@@ -7,9 +7,11 @@ import '../../data/unsent_drafts_store.dart';
 import '../../model/draft.dart';
 import '../../model/home.dart';
 import '../../model/transaction.dart';
+import '../../viewmodel/app_shell_view_model.dart';
 import '../../viewmodel/beranda_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../bicara/bicara_view.dart';
+import '../catatan/piutang_utang_view.dart';
 import '../draft/draft_view.dart';
 import '../foto/foto_view.dart';
 import '../format.dart';
@@ -34,8 +36,36 @@ class BerandaView extends StatelessWidget {
   }
 }
 
-class _BerandaScreen extends StatelessWidget {
+class _BerandaScreen extends StatefulWidget {
   const _BerandaScreen();
+
+  @override
+  State<_BerandaScreen> createState() => _BerandaScreenState();
+}
+
+class _BerandaScreenState extends State<_BerandaScreen> {
+  late final AppShellViewModel _appShell;
+
+  /// The tab stays alive in the shell's IndexedStack, so a Retur, Bayar or
+  /// Hapus made in Catatan only shows once Beranda loads again on opening.
+  @override
+  void initState() {
+    super.initState();
+    _appShell = context.read<AppShellViewModel>()
+      ..addListener(_reloadWhenOpened);
+  }
+
+  @override
+  void dispose() {
+    _appShell.removeListener(_reloadWhenOpened);
+    super.dispose();
+  }
+
+  void _reloadWhenOpened() {
+    if (_appShell.selectedTab == AppTab.beranda) {
+      context.read<BerandaViewModel>().load();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -216,6 +246,7 @@ List<Widget> _buildCards(HomeCards cards) {
       _HomeCard(
         icon: Icons.account_balance_wallet_outlined,
         text: _describeOpenBalances(cards),
+        buildRoute: PiutangUtangView.route,
       ),
     if (dueToday != null)
       _HomeCard(
@@ -296,15 +327,25 @@ class _Total extends StatelessWidget {
 }
 
 class _HomeCard extends StatelessWidget {
-  const _HomeCard({required this.icon, required this.text});
+  const _HomeCard({required this.icon, required this.text, this.buildRoute});
 
   final IconData icon;
   final String text;
 
+  /// The screen a tap opens, for cards that lead somewhere.
+  final Route<void> Function()? buildRoute;
+
   @override
   Widget build(BuildContext context) {
+    final buildRoute = this.buildRoute;
     return Card(
-      child: ListTile(leading: Icon(icon), title: Text(text)),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(text),
+        onTap: buildRoute == null
+            ? null
+            : () => Navigator.of(context).push(buildRoute()),
+      ),
     );
   }
 }
@@ -317,7 +358,6 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMasuk = entry.direction == Direction.masuk;
-    final sign = isMasuk ? '+' : '-';
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(isMasuk ? Icons.south_west : Icons.north_east),
@@ -325,30 +365,9 @@ class _EntryTile extends StatelessWidget {
       subtitle: entry.isFullyPaid
           ? null
           : Text('Sisa ${formatRupiah(entry.remaining)}'),
-      trailing: Text('$sign${formatRupiah(entry.total)}'),
+      trailing: Text(formatEntryTotal(entry)),
     );
   }
-}
-
-/// What the owner sees for an entry (spec §5.3: name, quantity, total):
-/// "Pak Budi · Nasi goreng 2 porsi, Es teh 4 gelas".
-@visibleForTesting
-String describeEntry(Transaction entry) {
-  final lineDescriptions = entry.lines.map(_describeLine).join(', ');
-  final person = entry.person;
-  if (person == null) return lineDescriptions;
-  return lineDescriptions.isEmpty
-      ? person.name
-      : '${person.name} · $lineDescriptions';
-}
-
-String _describeLine(TransactionLine line) {
-  // A bare amount has no item, so its category is the only name it has.
-  final name = line.item?.name ?? line.category?.name ?? '';
-  final quantity = line.quantity;
-  if (quantity == null) return name;
-  final unit = line.unit;
-  return unit == null ? '$name $quantity' : '$name $quantity $unit';
 }
 
 /// Ketik opens its quick amount. Bicara and Foto read first, then open the

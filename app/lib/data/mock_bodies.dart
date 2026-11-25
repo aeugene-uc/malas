@@ -2,7 +2,7 @@
 /// contract (backend rev 3 for `/home`, the AI half in Multiplayr #59 for
 /// `/ai/read`). Add a route here when a screen needs one before the backend
 /// has it, and delete it once the real route works.
-const Map<String, Object> mockBodiesByRoute = {
+final Map<String, Object> mockBodiesByRoute = {
   'GET /auth/me': _setUpAccount,
   'POST /auth/login': {'token': 'mock-token', ..._setUpAccount},
   // A new owner: no store name, no jenis usaha and no consent yet, so the
@@ -175,16 +175,52 @@ const Map<String, Object> mockBodiesByRoute = {
   },
   'GET /analytics/by-item': {
     'rows': [
-      {'id': 'item-1', 'name': 'Nasi goreng', 'amount': 4500000, 'share': 0.52},
-      {'id': 'item-2', 'name': 'Es teh', 'amount': 1800000, 'share': 0.21},
-      {'id': 'item-4', 'name': 'Mie goreng', 'amount': 1340000, 'share': 0.16},
+      {
+        'id': 'item-1',
+        'name': 'Nasi goreng',
+        'kind': 'item',
+        'amount': 4500000,
+        'share': 0.52,
+      },
+      {
+        'id': 'item-2',
+        'name': 'Es teh',
+        'kind': 'item',
+        'amount': 1800000,
+        'share': 0.21,
+      },
+      {
+        'id': 'item-4',
+        'name': 'Mie goreng',
+        'kind': 'item',
+        'amount': 1340000,
+        'share': 0.16,
+      },
     ],
   },
   'GET /analytics/by-category': {
     'rows': [
-      {'id': 'cat-bahan', 'name': 'Bahan', 'amount': 3100000, 'share': 0.6},
-      {'id': 'item-3', 'name': 'Gas', 'amount': 750000, 'share': 0.14},
-      {'id': 'cat-sewa', 'name': 'Sewa', 'amount': 1000000, 'share': 0.19},
+      {
+        'id': 'cat-bahan',
+        'name': 'Bahan',
+        'kind': 'category',
+        'amount': 3100000,
+        'share': 0.6,
+      },
+      {
+        'id': 'item-3',
+        'name': 'Gas',
+        'kind': 'item',
+        'amount': 750000,
+        'share': 0.14,
+      },
+      {
+        'id': 'cat-sewa',
+        'name': 'Sewa',
+        'kind': 'category',
+        'amount': 1000000,
+        'share': 0.19,
+      },
     ],
   },
   'GET /alerts': {
@@ -208,6 +244,17 @@ const Map<String, Object> mockBodiesByRoute = {
     'daysRecorded': 5,
     'period': {'from': '2026-11-09', 'to': '2026-11-15'},
     'function': 'byItem',
+  },
+  'GET /transactions': {'transactions': sampleTransactions, 'nextCursor': null},
+  'POST /transactions/:id/restore': <String, Object>{},
+  'POST /transactions/:id/payments': {
+    'payment': {'id': 'pay-new', 'date': '2026-11-15', 'amount': 10000},
+  },
+  'GET /receivables': {
+    'rows': [_budiBon],
+  },
+  'GET /payables': {
+    'rows': [_supplierTempo, _overpaidOrder],
   },
   'POST /auth/consent': {'consentAt': '2026-11-15T09:00:00.000Z'},
   'PATCH /stores/:id': {'store': <String, Object>{}},
@@ -402,3 +449,148 @@ const Map<String, Object> _setUpAccount = {
     },
   ],
 };
+
+/// Newest first, as `GET /transactions` returns them.
+final List<Map<String, Object>> sampleTransactions = [
+  _nasiGorengSale,
+  _gasPurchase,
+  _budiBon,
+  _supplierTempo,
+  _overpaidOrder,
+];
+
+Map<String, Object> _transaction({
+  required String id,
+  required String businessDate,
+  required String direction,
+  required int total,
+  required int paid,
+  required List<Map<String, Object?>> lines,
+  Map<String, Object>? person,
+  String? dueDate,
+  int editCount = 0,
+  bool hasRetur = false,
+}) {
+  return {
+    'id': id,
+    'businessDate': businessDate,
+    'direction': direction,
+    'total': total,
+    'paid': paid,
+    'remaining': total - paid,
+    'editCount': editCount,
+    'hasRetur': hasRetur,
+    'person': ?person,
+    'dueDate': ?dueDate,
+    'lines': lines,
+  };
+}
+
+Map<String, Object?> _line({
+  required String id,
+  required String? itemName,
+  required int lineTotal,
+  String? itemId,
+  Map<String, Object>? category,
+  String? quantity,
+  String? unit,
+}) {
+  return {
+    'id': id,
+    'item': itemName == null
+        ? null
+        : {'id': itemId ?? 'item-$id', 'name': itemName},
+    'category': category,
+    'quantity': quantity,
+    'unit': unit,
+    'unitPrice': null,
+    'lineTotal': lineTotal,
+    'discount': 0,
+  };
+}
+
+final Map<String, Object> _nasiGorengSale = _transaction(
+  id: 'trx-1',
+  businessDate: '2026-11-15',
+  direction: 'IN',
+  total: 42000,
+  paid: 42000,
+  editCount: 2,
+  lines: [
+    _line(
+      id: 'l1',
+      itemId: 'item-1',
+      itemName: 'Nasi goreng',
+      quantity: '2',
+      unit: 'porsi',
+      lineTotal: 30000,
+    ),
+    _line(
+      id: 'l2',
+      itemId: 'item-2',
+      itemName: 'Es teh',
+      quantity: '4',
+      unit: 'gelas',
+      lineTotal: 12000,
+    ),
+  ],
+);
+
+final Map<String, Object> _gasPurchase = _transaction(
+  id: 'trx-2',
+  businessDate: '2026-11-15',
+  direction: 'OUT',
+  total: 25000,
+  paid: 25000,
+  lines: [_line(id: 'l3', itemId: 'item-3', itemName: 'Gas', lineTotal: 25000)],
+);
+
+final Map<String, Object> _budiBon = _transaction(
+  id: 'trx-3',
+  businessDate: '2026-11-14',
+  direction: 'IN',
+  total: 30000,
+  paid: 0,
+  person: {'id': 'person-1', 'name': 'Pak Budi'},
+  dueDate: '2026-11-20',
+  lines: [_line(id: 'l4', itemName: null, lineTotal: 30000)],
+);
+
+final Map<String, Object> _supplierTempo = _transaction(
+  id: 'trx-4',
+  businessDate: '2026-11-13',
+  direction: 'OUT',
+  total: 1200000,
+  paid: 0,
+  person: {'id': 'person-2', 'name': 'Toko Sumber Rejeki'},
+  dueDate: '2026-11-27',
+  hasRetur: true,
+  lines: [
+    _line(
+      id: 'l5',
+      itemName: 'Beras',
+      category: {'id': 'cat-bahan', 'name': 'Bahan'},
+      quantity: '50',
+      unit: 'kg',
+      lineTotal: 1200000,
+    ),
+  ],
+);
+
+final Map<String, Object> _overpaidOrder = _transaction(
+  id: 'trx-5',
+  businessDate: '2026-11-12',
+  direction: 'IN',
+  total: 150000,
+  paid: 200000,
+  person: {'id': 'person-3', 'name': 'Bu Ani'},
+  lines: [
+    _line(
+      id: 'l6',
+      itemName: 'Nasi kotak',
+      quantity: '10',
+      unit: 'paket',
+      lineTotal: 150000,
+    ),
+  ],
+);

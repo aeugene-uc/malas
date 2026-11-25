@@ -13,6 +13,7 @@ import 'data/unsent_drafts_store.dart';
 import 'model/account.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
+import 'data/mock_transaction_store.dart';
 import 'view/first_run/session_gate.dart';
 import 'viewmodel/app_shell_view_model.dart';
 import 'viewmodel/session_view_model.dart';
@@ -42,7 +43,9 @@ ApiClient buildApiClient({required String baseUrl}) {
   if (isMock) {
     dio.httpClientAdapter = MockApiAdapter(
       basePath: mockBasePath,
-      bodiesByRoute: mockBodiesByRoute,
+      // A fresh store per app run, so deletes and payments stick while it
+      // runs but every start is the same.
+      bodiesByRoute: {...mockBodiesByRoute, ...MockTransactionStore().routes},
     );
   }
   return ApiClient(dio);
