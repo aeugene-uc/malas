@@ -206,7 +206,7 @@ class _PaymentDialog extends StatefulWidget {
 
 class _PaymentDialogState extends State<_PaymentDialog> {
   late final _amountController = TextEditingController(
-    text: widget.transaction.remaining.toString(),
+    text: groupThousands(widget.transaction.remaining),
   );
   bool _isSaving = false;
 
@@ -227,6 +227,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
+            inputFormatters: [RupiahInputFormatter()],
             autofocus: true,
             decoration: const InputDecoration(
               labelText: 'Jumlah',
