@@ -111,6 +111,44 @@ class Draft {
     );
   }
 
+  /// Ubah: the saved entry, back on the draft screen (§8.4). The payment
+  /// only shows Lunas or Sisa there; an edit keeps the entry's own payments.
+  // shortcut: rows carry no note, so an edit clears one (the history keeps
+  // it); send the note in the row if the app ever shows notes.
+  factory Draft.fromTransaction(Transaction entry) {
+    return Draft(
+      businessDate: entry.businessDate,
+      direction: entry.direction,
+      total: entry.total,
+      personId: entry.person?.id,
+      personName: entry.person?.name,
+      dueDate: entry.dueDate,
+      source: 'TYPED',
+      inputId: null,
+      note: null,
+      lines: [
+        for (final line in entry.lines)
+          DraftLine(
+            itemId: line.item?.id,
+            itemName: line.item?.name,
+            categoryId: line.category?.id,
+            quantity: line.quantity,
+            unit: line.unit,
+            unitPrice: line.unitPrice,
+            lineTotal: line.lineTotal,
+          ),
+      ],
+      payments: [
+        if (entry.paid > 0)
+          DraftPayment(
+            date: entry.businessDate,
+            amount: entry.paid,
+            label: null,
+          ),
+      ],
+    );
+  }
+
   /// Null means Hari ini: the server resolves today from the store's
   /// timezone and day-change hour, so the app sends no date at all.
   String? businessDate;

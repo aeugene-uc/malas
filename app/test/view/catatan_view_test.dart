@@ -187,6 +187,61 @@ void main() {
     expect(draft.linkedTransactionId, 'trx-2');
   });
 
+  /// Ubah on Gas, its total changed to Rp 30.000, then Simpan.
+  Future<void> editGasTo30000(WidgetTester tester) async {
+    final draft = await openCopyOfGas(tester, 'Ubah');
+    expect(draft.businessDate, '2026-11-15');
+    // Gas is from 15 Nov and the mock's today is 11 Nov.
+    expect(
+      tester.element(find.byType(DraftView)).read<DraftViewModel>().dateChoice,
+      DateChoice.pilihTanggal,
+    );
+    tester
+        .element(find.byType(DraftView))
+        .read<DraftViewModel>()
+        .editLine(
+          draftIndex: 0,
+          lineIndex: 0,
+          edit: (line) => line.lineTotal = 30000,
+        );
+    await tester.tap(find.text('Simpan'));
+    // The save, then the list's reload.
+    for (var step = 0; step < 2; step++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+    }
+  }
+
+  testWidgets('ubahSavesOverTheEntryWithoutBatal', (tester) async {
+    await editGasTo30000(tester);
+
+    expect(find.text('Diubah 1x'), findsOneWidget);
+    expect(find.text('-Rp 30.000'), findsOneWidget);
+    expect(find.text('Batal'), findsNothing);
+  });
+
+  testWidgets('diubahListsTheEntryAsItWasBefore', (tester) async {
+    await editGasTo30000(tester);
+
+    await tester.tap(find.text('Gas'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Diubah 1x').last);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(ListTile),
+        matching: find.text('Rp 25.000'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('piutangUtangShowsKembalikanUnderUtang', (tester) async {
     await openCatatan(tester);
 

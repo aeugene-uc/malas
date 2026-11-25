@@ -21,13 +21,19 @@ Future<void> openDraftScreen(
   required VoidCallback onChanged,
   List<String>? idempotencyKeys,
   bool isUnsent = false,
+  String? editingTransactionId,
 }) async {
   final viewModel = DraftViewModel(
     draftRepository: context.read<DraftRepository>(),
     businessToday: businessToday,
     drafts: drafts,
     warnings: warnings,
-    unsentDraftsStore: context.read<UnsentDraftsStore>(),
+    // A failed edit is retried on the screen; kept on the phone it would
+    // come back as a new entry.
+    unsentDraftsStore: editingTransactionId == null
+        ? context.read<UnsentDraftsStore>()
+        : null,
+    editingTransactionId: editingTransactionId,
     idempotencyKeys: idempotencyKeys,
     isUnsent: isUnsent,
   );
@@ -45,6 +51,13 @@ Future<void> openDraftScreen(
     return;
   }
   onChanged();
+  if (viewModel.isEditing) {
+    // Batal deletes what Simpan made, which here is the entry itself.
+    viewModel.dispose();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Tersimpan')));
+    return;
+  }
   await showBatalToast(context, viewModel: viewModel, onChanged: onChanged);
 }
 

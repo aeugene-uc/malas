@@ -13,11 +13,14 @@ class MockTransactionStore {
       ];
 
   final List<Map<String, Object?>> _transactions;
+  final Map<String, List<Map<String, Object?>>> _historyById = {};
   final Set<String> _deletedIds = {};
 
   /// The routes this store answers, to lay over [mockBodiesByRoute].
   Map<String, Object> get routes => {
     'GET /transactions': _list,
+    'PATCH /transactions/:id': _edit,
+    'GET /transactions/:id/history': _history,
     'DELETE /transactions/:id': _delete,
     'POST /transactions/:id/restore': _restore,
     'POST /transactions/:id/payments': _pay,
@@ -37,6 +40,38 @@ class MockTransactionStore {
           if (_matches(transaction, query)) transaction,
       ],
       'nextCursor': null,
+    };
+  }
+
+  /// Ubah: the new date and total replace the old, which go to history.
+  /// The lines stay, since the mock rows name their items and drafts don't.
+  Object _edit(MockRequest request) {
+    final id = request.segmentAfter('transactions');
+    final transaction = _find(id);
+    (_historyById[id] ??= []).insert(0, {
+      'id': 'edit-$id-${transaction['editCount']}',
+      'at': '2026-11-11T03:00:00.000Z',
+      'previous': {
+        'businessDate': transaction['businessDate'],
+        'total': transaction['total'],
+      },
+    });
+    final total = request.body['total']! as int;
+    transaction['businessDate'] =
+        request.body['businessDate'] ?? transaction['businessDate'];
+    // As the server does, an entry paid in full stays paid in full.
+    if (transaction['paid'] == transaction['total']) {
+      transaction['paid'] = total;
+    }
+    transaction['total'] = total;
+    transaction['remaining'] = total - (transaction['paid']! as int);
+    transaction['editCount'] = (transaction['editCount']! as int) + 1;
+    return {'transaction': transaction, 'warnings': <Object>[]};
+  }
+
+  Object _history(MockRequest request) {
+    return {
+      'history': _historyById[request.segmentAfter('transactions')] ?? [],
     };
   }
 

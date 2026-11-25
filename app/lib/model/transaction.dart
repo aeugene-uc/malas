@@ -130,3 +130,27 @@ class TransactionLine {
   final int lineTotal;
   final int discount;
 }
+
+/// One Ubah of an entry: when it happened and the entry as it was before
+/// (`GET /transactions/:id/history`, newest first).
+class EditRecord {
+  const EditRecord({
+    required this.at,
+    required this.previousBusinessDate,
+    required this.previousTotal,
+  });
+
+  factory EditRecord.fromJson(Map<String, Object?> json) {
+    final previous = json['previous'] as Map<String, Object?>;
+    return EditRecord(
+      at: DateTime.parse(json['at'] as String),
+      previousBusinessDate: previous['businessDate'] as String,
+      previousTotal: previous['total'] as int,
+    );
+  }
+
+  /// UTC, as the server sends it.
+  final DateTime at;
+  final String previousBusinessDate;
+  final int previousTotal;
+}

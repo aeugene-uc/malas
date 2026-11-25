@@ -1,4 +1,5 @@
 import '../model/draft.dart';
+import '../model/home.dart';
 import '../model/transaction.dart';
 import '../model/transaction_filter.dart';
 import 'api_client.dart';
@@ -75,6 +76,23 @@ class TransactionRepository {
       '/transactions/$transactionId/${copy.path}',
     );
     return AiReadResult.fromJson(body as Map<String, Object?>);
+  }
+
+  /// Today as the server dates it, from the store's timezone and day
+  /// change hour, so Ubah's date chip never trusts the phone's clock.
+  Future<String> fetchBusinessToday() async {
+    final body = await _apiClient.get('/home');
+    return Home.fromJson(body as Map<String, Object?>).today.businessDate;
+  }
+
+  Future<List<EditRecord>> fetchHistory(String transactionId) async {
+    final body = await _apiClient.get(
+      '/transactions/$transactionId/history',
+    ) as Map<String, Object?>;
+    return [
+      for (final recordJson in body['history'] as List<Object?>)
+        EditRecord.fromJson(recordJson as Map<String, Object?>),
+    ];
   }
 
   Future<List<Transaction>> _fetchOpen(String path) async {
