@@ -11,7 +11,7 @@ import '../support/recording_adapter.dart';
 import '../support/status_adapter.dart';
 
 final DateTime beforeTrialEnds = DateTime.utc(2026, 11, 20);
-final DateTime afterTrialEnds = DateTime.utc(2026, 12, 1);
+final DateTime afterTrialEnds = DateTime.utc(2099, 1, 2);
 
 void main() {
   late RecordingAdapter adapter;

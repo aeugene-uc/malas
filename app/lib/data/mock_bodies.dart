@@ -23,7 +23,7 @@ final Map<String, Object> mockBodiesByRoute = {
         'timezone': 'Asia/Jakarta',
         'dayChangeHour': 4,
         'plan': 'GRATIS',
-        'trialEndsAt': '2026-11-29T00:00:00.000Z',
+        'trialEndsAt': '2099-01-01T00:00:00.000Z',
       },
     ],
   },
@@ -445,7 +445,7 @@ const Map<String, Object> _setUpAccount = {
       'reminderTime': '20:00',
       'alertsOn': true,
       'plan': 'GRATIS',
-      'trialEndsAt': '2026-11-25T00:00:00.000Z',
+      'trialEndsAt': '2099-01-01T00:00:00.000Z',
     },
   ],
 };
