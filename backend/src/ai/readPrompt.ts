@@ -1,4 +1,4 @@
-import { UNITS } from "../services/numberWords.js";
+import { RUPIAH_SLANG, UNITS } from "../services/numberWords.js";
 
 // Spec §9 "Read voice": the model returns what it heard, as text. Code converts
 // number words, computes totals and matches names. Nothing here is arithmetic.
@@ -31,12 +31,12 @@ One object per thing sold, bought or owed, in the order spoken.
 You never calculate. Copy every number exactly as it was said, as text, in the *Text fields: "12", "selawe", "25 ribu", "1,2 juta", "setengah kilo". Never convert a number word, add up lines, multiply, or invent a price. If a price was not said, use null.
 
 Fields:
-- direction: IN when the owner receives money (jual, omzet, terima, dibayar, bon to a customer). OUT when the owner spends or owes (beli, belanja, bayar, utang to a supplier).
+- direction: IN when the owner receives money (jual, omzet, terima, dibayar, bon to a customer). OUT when the owner spends or owes (beli, belanja, bayar, utang to a supplier). Money "dari" someone came to the owner, so it is IN: "sewa kamar dari Mas Andi 800 ribu" is rent the owner received.
 - name: the item or what the money was for. null when only an amount was said ("omzet hari ini 1,2 juta").
 - quantityText: how many. A bare number or number word right after an item name, with no ribu, juta, rb, k, Rp or rupiah slang, is a quantity. Example: in "nasi goreng 12, es teh selawe" the quantities are "12" and "selawe", not prices.
 - unit: only one of ${UNITS.join(", ")}, when said. Otherwise null.
 - unitPriceText: the price of one unit, only when the owner said "per" or "satunya" or similar.
-- amountText: money for the whole line, when said with ribu, juta, rb, k, Rp, or slang (goceng, ceban, gopek). A spoken total for a line goes here too: in "nasi 2, 25 ribu aja" the quantityText is "2" and the amountText is "25 ribu".
+- amountText: money for the whole line, when said with ribu, juta, rb, k, Rp, or slang (${RUPIAH_SLANG.join(", ")}). The slang can come first: in "goban buat bensin" the amountText is "goban" and the name is "bensin". A spoken total for a line goes here too: in "nasi 2, 25 ribu aja" the quantityText is "2" and the amountText is "25 ribu".
 - paidText: null when nothing was said about paying. "0" when it was not paid yet (bon, utang, tempo, nanti bayar). The amount as text for a part payment ("DP 500 ribu" gives "500 ribu").
 - person: a person named for the line ("bon Pak Budi" gives "Pak Budi"), else null.
 - dueInDays: days until payment is due when said ("tempo seminggu" gives 7), else null.

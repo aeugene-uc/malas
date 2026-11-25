@@ -172,7 +172,8 @@ function startDraft(
 function buildLine(heard: HeardLine, context: { isPrinted: boolean; saved: SavedRecords }): { line: DraftLine; unclearFields: string[] } {
   const { isPrinted, saved } = context;
   const unclearFields: string[] = [];
-  const { quantityText, amountText } = isPrinted ? heard : moveBareNumberToQuantity(heard);
+  const heardTexts = moveMoneyToAmount(heard);
+  const { quantityText, amountText } = isPrinted ? heardTexts : moveBareNumberToQuantity(heardTexts);
 
   const quantity = convert(quantityText, parseQuantity, "quantity", unclearFields);
   const heardUnitPrice = convert(heard.unitPriceText, parseRupiah, "unitPrice", unclearFields);
@@ -208,10 +209,22 @@ function buildLine(heard: HeardLine, context: { isPrinted: boolean; saved: Saved
   return { line, unclearFields };
 }
 
+type LineTexts = { quantityText: string | null; amountText: string | null };
+
+// The model sometimes puts "goban" in quantityText. Text with ribu, juta, Rp or
+// slang is money, never a count, so it becomes the line's amount (#45).
+function moveMoneyToAmount(heard: LineTexts): LineTexts {
+  const { quantityText, amountText } = heard;
+  if (amountText !== null || quantityText === null || !hasMoneyMarker(quantityText)) {
+    return { quantityText, amountText };
+  }
+  return { quantityText: null, amountText: quantityText };
+}
+
 // The model sometimes puts "selawe" in amountText. Without ribu, juta, Rp or
 // slang it is a quantity, and a quantity is never a few rupiah (spec §7.3). A
 // printed receipt never writes a number word, so this is for speech only.
-function moveBareNumberToQuantity(heard: HeardLine): { quantityText: string | null; amountText: string | null } {
+function moveBareNumberToQuantity(heard: LineTexts): LineTexts {
   const { quantityText, amountText } = heard;
   if (quantityText !== null || amountText === null || hasMoneyMarker(amountText)) {
     return { quantityText, amountText };
