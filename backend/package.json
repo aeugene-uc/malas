@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/**/*.test.ts",
     "test:db": "node --env-file=.env --import tsx --test test/db/*.ts",
+    "eval:ai": "node --env-file=.env --import tsx test/ai-set/run.ts",
     "prisma": "prisma"
   },
   "dependencies": {
