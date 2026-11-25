@@ -254,6 +254,21 @@ void main() {
     expect(find.text('Kembalikan Rp 50.000'), findsOneWidget);
   });
 
+  testWidgets('bayarAmountShowsThousandsDots', (tester) async {
+    await openCatatan(tester);
+    await tester.tap(find.text('Piutang/Utang'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pak Budi'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Bayar'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, '30.000'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '1200000');
+    expect(find.widgetWithText(TextField, '1.200.000'), findsOneWidget);
+  });
+
   testWidgets('anAnalisisRowOpensCatatanNarrowedToIt', (tester) async {
     await openCatatan(tester);
     await tester.tap(
