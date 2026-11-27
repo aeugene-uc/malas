@@ -70,8 +70,16 @@ class _BerandaScreenState extends State<_BerandaScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<BerandaViewModel>();
+    final session = context.watch<SessionViewModel?>();
+    final isGuidedEntryDue = session?.isGuidedEntryDue ?? false;
     final home = viewModel.home;
     if (home != null) _reopenUnsentDrafts(context, viewModel, home);
+    // Any save ends the guided entry, whichever button made it.
+    void onChanged() {
+      viewModel.load();
+      session?.finishGuidedEntry();
+    }
+
     return Scaffold(
       appBar: AppBar(title: const _StoreNameTitle()),
       body: Column(
@@ -84,6 +92,11 @@ class _BerandaScreenState extends State<_BerandaScreen> {
                     child: _HomeList(
                       home: home,
                       errorMessage: viewModel.errorMessage,
+                      guidedEntry: isGuidedEntryDue
+                          ? _GuidedEntryCard(
+                              onLewati: session!.finishGuidedEntry,
+                            )
+                          : null,
                     ),
                   ),
           ),
@@ -96,7 +109,7 @@ class _BerandaScreenState extends State<_BerandaScreen> {
                     context,
                     captureRoute: BicaraView.route(),
                     businessToday: home.today.businessDate,
-                    onChanged: viewModel.load,
+                    onChanged: onChanged,
                   ),
             onFoto: home == null
                 ? null
@@ -104,14 +117,14 @@ class _BerandaScreenState extends State<_BerandaScreen> {
                     context,
                     captureRoute: FotoView.route(),
                     businessToday: home.today.businessDate,
-                    onChanged: viewModel.load,
+                    onChanged: onChanged,
                   ),
             onKetik: home == null
                 ? null
                 : () => openKetik(
                     context,
                     businessToday: home.today.businessDate,
-                    onChanged: viewModel.load,
+                    onChanged: onChanged,
                   ),
           ),
         ],
@@ -191,12 +204,19 @@ class _FirstLoadState extends StatelessWidget {
 }
 
 class _HomeList extends StatelessWidget {
-  const _HomeList({required this.home, required this.errorMessage});
+  const _HomeList({
+    required this.home,
+    required this.errorMessage,
+    required this.guidedEntry,
+  });
 
   final Home home;
 
   /// From a failed refresh, shown above the last loaded data.
   final String? errorMessage;
+
+  /// Shown first, above today's totals, while the guided entry is due.
+  final Widget? guidedEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +233,7 @@ class _HomeList extends StatelessWidget {
               style: TextStyle(color: colorScheme.error),
             ),
           ),
+        ?guidedEntry,
         _TodayTotals(today: home.today, comparisons: home.comparisons),
         const SizedBox(height: 16),
         ..._buildCards(home.cards),
@@ -366,6 +387,51 @@ class _EntryTile extends StatelessWidget {
           ? null
           : Text('Sisa ${formatRupiah(entry.remaining)}'),
       trailing: Text(formatEntryTotal(entry)),
+    );
+  }
+}
+
+/// #33, usability finding 2: a new owner is walked through one spoken sale,
+/// from Bicara to the draft to Beranda. The steps are the second exception to
+/// the labels-only rule in `CLAUDE.md`.
+const List<String> guidedEntrySteps = [
+  'Ketuk Bicara',
+  'Ucapkan satu penjualan, misalnya "Jual 2 nasi goreng, 30 ribu"',
+  'Cek catatannya, lalu ketuk Simpan',
+];
+
+class _GuidedEntryCard extends StatelessWidget {
+  const _GuidedEntryCard({required this.onLewati});
+
+  final VoidCallback onLewati;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Catat penjualan pertama', style: textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final (index, step) in guidedEntrySteps.indexed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('${index + 1}. $step'),
+              ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onLewati,
+                child: const Text('Lewati'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
