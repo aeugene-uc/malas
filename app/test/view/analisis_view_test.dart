@@ -22,7 +22,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey(AppTab.analisis)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Rp 8.640.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('+Rp 8.640.000'), findsOneWidget);
     expect(find.text('10 dari 15 hari dicatat'), findsOneWidget);
     expect(find.text('Masuk per barang'), findsOneWidget);
     expect(find.text('Nasi goreng'), findsOneWidget);
