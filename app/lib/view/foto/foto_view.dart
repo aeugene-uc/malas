@@ -66,7 +66,7 @@ class FotoView extends StatelessWidget {
                     for (final (index, kind) in PhotoKind.values.indexed) ...[
                       if (index > 0) const SizedBox(width: MalasSpace.s8),
                       Expanded(
-                        child: ChoiceLipChip(
+                        child: SelectChip(
                           label: kind == PhotoKind.nota
                               ? 'Nota'
                               : 'Buku catatan',

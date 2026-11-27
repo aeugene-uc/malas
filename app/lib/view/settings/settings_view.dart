@@ -65,7 +65,7 @@ class SettingsView extends StatelessWidget {
                 _ChipWrap(
                   children: [
                     for (final type in BusinessType.values)
-                      ChoiceLipChip(
+                      SelectChip(
                         label: type.label,
                         isSelected: viewModel.businessTypes.contains(type),
                         onPressed: () => viewModel.toggleBusinessType(type),
@@ -81,7 +81,7 @@ class SettingsView extends StatelessWidget {
                       weekday <= DateTime.sunday;
                       weekday++
                     )
-                      ChoiceLipChip(
+                      SelectChip(
                         label: formatIsoWeekdayShort(weekday),
                         isSelected: viewModel.closedDays.contains(weekday),
                         onPressed: () => viewModel.toggleClosedDay(weekday),

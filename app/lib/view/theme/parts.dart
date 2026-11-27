@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../model/transaction.dart';
 import '../format.dart';
 import 'icons.dart';
-import 'lip.dart';
 import 'tokens.dart';
 
 /// §1.2: money is a prefix and a number on one baseline, 4 apart. Masuk is
@@ -344,10 +343,11 @@ class EntryRowFor extends StatelessWidget {
   }
 }
 
-/// A choice chip on the white body. §2 only lists chips on brand, so this
-/// takes the secondary button's tones idle and the primary's when selected.
-class ChoiceLipChip extends StatelessWidget {
-  const ChoiceLipChip({
+/// A choice among several, e.g. a category or a closed day. Choices are
+/// information, not actions, so they're flat (§2): no lip, a tick and the
+/// brand outline when selected.
+class SelectChip extends StatelessWidget {
+  const SelectChip({
     super.key,
     required this.label,
     required this.isSelected,
@@ -360,33 +360,162 @@ class ChoiceLipChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final variant = isSelected ? LipVariant.primary : LipVariant.secondary;
+    final foreground = isSelected
+        ? MalasColors.textBrandDark
+        : MalasColors.textPrimary;
     return Semantics(
       selected: isSelected,
-      child: LipPressable(
-        onPressed: onPressed,
-        fill: variant.fill,
-        lip: variant.lip,
-        borderRadius: BorderRadius.circular(MalasRadius.chip),
-        // Sized to its label, so a Wrap of chips wraps; inside Expanded the
-        // Row is stretched and centres it.
-        child: Container(
-          height: MalasSize.touch - MalasSize.lip,
-          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MalasText.labelChip.copyWith(
-                    color: variant.foreground,
+      button: true,
+      child: Material(
+        color: isSelected ? MalasColors.bgSelected : MalasColors.bgSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(MalasRadius.chip),
+          side: BorderSide(
+            color: isSelected ? MalasColors.bgBrand : MalasColors.borderCard,
+            width: MalasSize.cardStroke,
+          ),
+        ),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(MalasRadius.chip),
+          child: Container(
+            height: MalasSize.touch,
+            padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isSelected) ...[
+                  Icon(MalasIcons.check, size: 16, color: foreground),
+                  const SizedBox(width: MalasSpace.s4),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: MalasText.labelChip.copyWith(color: foreground),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One track with equal segments, the selected one raised as a white pill:
+/// Masuk/Keluar, Piutang/Utang, Minggu/Bulan/Tahun. On the brand header the
+/// track is the darker brand tone.
+class SegmentedSelector extends StatelessWidget {
+  const SegmentedSelector({
+    super.key,
+    required this.labels,
+    required this.selectedIndex,
+    required this.onSelected,
+    this.values,
+    this.isOnBrand = false,
+  });
+
+  final List<String> labels;
+
+  /// A second line under each label, e.g. a total. Same length as [labels].
+  final List<String>? values;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final bool isOnBrand;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = this.values;
+    return Container(
+      padding: const EdgeInsets.all(MalasSpace.s4),
+      decoration: BoxDecoration(
+        color: isOnBrand ? MalasColors.bgBrandPressed : MalasColors.bgSecondary,
+        borderRadius: BorderRadius.circular(MalasRadius.md),
+      ),
+      child: Row(
+        children: [
+          for (final (index, label) in labels.indexed)
+            Expanded(
+              child: _Segment(
+                label: label,
+                value: values?[index],
+                isSelected: index == selectedIndex,
+                isOnBrand: isOnBrand,
+                onTap: () => onSelected(index),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Segment extends StatelessWidget {
+  const _Segment({
+    required this.label,
+    required this.value,
+    required this.isSelected,
+    required this.isOnBrand,
+    required this.onTap,
+  });
+
+  final String label;
+  final String? value;
+  final bool isSelected;
+  final bool isOnBrand;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = this.value;
+    final foreground = isSelected
+        ? (isOnBrand ? MalasColors.textOnBrandAction : MalasColors.textPrimary)
+        : (isOnBrand ? MalasColors.textOnBrand : MalasColors.textSecondary);
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 150),
+          constraints: const BoxConstraints(
+            minHeight: MalasSize.touch - MalasSpace.s8,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: MalasSpace.s8,
+            vertical: MalasSpace.s4,
+          ),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? MalasColors.bgSurface : null,
+            borderRadius: BorderRadius.circular(MalasRadius.md - MalasSpace.s4),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MalasText.labelChip.copyWith(color: foreground),
+              ),
+              if (value != null)
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: MalasText.labelTag.copyWith(
+                    color: foreground,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
             ],
           ),
         ),

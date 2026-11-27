@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/auth_repository.dart';
 import 'package:malas/main.dart';
+import 'package:malas/view/theme/parts.dart';
 import 'package:malas/view/beranda/beranda_view.dart';
 import 'package:malas/view/first_run/sign_in_view.dart';
 import 'package:malas/view/settings/items_view.dart';
@@ -41,7 +42,7 @@ void main() {
   testWidgets('simpanAfterAnEditGoesBackToBeranda', (tester) async {
     await openSettings(tester);
 
-    await tester.tap(find.widgetWithText(LipPressable, 'Jum'));
+    await tester.tap(find.widgetWithText(SelectChip, 'Jum'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(LipButton, 'Simpan'));
     await tester.pumpAndSettle();

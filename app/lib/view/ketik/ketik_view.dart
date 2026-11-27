@@ -81,7 +81,7 @@ class KetikView extends StatelessWidget {
                         in Direction.values.indexed) ...[
                       if (index > 0) const SizedBox(width: MalasSpace.s8),
                       Expanded(
-                        child: ChoiceLipChip(
+                        child: SelectChip(
                           label: direction == Direction.masuk
                               ? 'Masuk'
                               : 'Keluar',
@@ -111,7 +111,7 @@ class KetikView extends StatelessWidget {
                   runSpacing: MalasSpace.s4,
                   children: [
                     for (final category in viewModel.categoriesForDirection)
-                      ChoiceLipChip(
+                      SelectChip(
                         label: category.name,
                         isSelected: category.id == viewModel.categoryId,
                         onPressed: () => viewModel.selectCategory(category.id),
