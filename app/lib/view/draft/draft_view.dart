@@ -619,12 +619,14 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
           TextField(
             controller: _unitPriceController,
             keyboardType: TextInputType.number,
+            style: MalasText.moneyRow,
             decoration: const InputDecoration(labelText: 'Harga satuan'),
           ),
           const SizedBox(height: MalasSpace.s12),
           TextField(
             controller: _lineTotalController,
             keyboardType: TextInputType.number,
+            style: MalasText.moneyRow,
             decoration: const InputDecoration(labelText: 'Total'),
           ),
           const SizedBox(height: MalasSpace.s20),
