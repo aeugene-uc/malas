@@ -9,6 +9,10 @@ import '../../viewmodel/draft_view_model.dart';
 import '../../viewmodel/ketik_view_model.dart';
 import '../draft/draft_view.dart';
 import '../format.dart';
+import '../theme/brand_header.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/tokens.dart';
 
 /// Opens Ketik. A saved amount shows the Batal toast on the caller's screen,
 /// and [onChanged] runs after the save and after a Batal.
@@ -43,68 +47,105 @@ class KetikView extends StatelessWidget {
     final viewModel = context.watch<KetikViewModel>();
     final errorMessage = viewModel.errorMessage;
     return Scaffold(
-      appBar: AppBar(title: const Text('Ketik')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
-          SegmentedButton<Direction>(
-            segments: const [
-              ButtonSegment(value: Direction.masuk, label: Text('Masuk')),
-              ButtonSegment(value: Direction.keluar, label: Text('Keluar')),
+          // §5.4: a form keeps only the header hills; the action hides the
+          // coins.
+          BrandHeader(
+            title: 'Ketik',
+            actions: [
+              IconButton(
+                tooltip: 'Tutup',
+                color: MalasColors.textOnBrand,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(MalasIcons.x),
+              ),
             ],
-            selected: {viewModel.direction},
-            onSelectionChanged: (selected) =>
-                viewModel.selectDirection(selected.single),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [RupiahInputFormatter()],
-            style: Theme.of(context).textTheme.headlineSmall,
-            decoration: const InputDecoration(
-              labelText: 'Jumlah',
-              prefixText: 'Rp ',
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s8,
+              MalasSpace.screen,
+              MalasSpace.s24,
             ),
-            onChanged: (text) => viewModel.setAmount(parseRupiahInput(text)),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              for (final category in viewModel.categoriesForDirection)
-                ChoiceChip(
-                  label: Text(category.name),
-                  selected: category.id == viewModel.categoryId,
-                  onSelected: (_) => viewModel.selectCategory(category.id),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    for (final (index, direction)
+                        in Direction.values.indexed) ...[
+                      if (index > 0) const SizedBox(width: MalasSpace.s8),
+                      Expanded(
+                        child: _ChoiceLipChip(
+                          label: direction == Direction.masuk
+                              ? 'Masuk'
+                              : 'Keluar',
+                          isSelected: viewModel.direction == direction,
+                          onPressed: () => viewModel.selectDirection(direction),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-            ],
+                const SizedBox(height: MalasSpace.s16),
+                TextField(
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [RupiahInputFormatter()],
+                  style: MalasText.moneyLarge,
+                  decoration: const InputDecoration(
+                    labelText: 'Jumlah',
+                    prefixText: 'Rp ',
+                  ),
+                  onChanged: (text) =>
+                      viewModel.setAmount(parseRupiahInput(text)),
+                ),
+                const SizedBox(height: MalasSpace.s16),
+                Wrap(
+                  spacing: MalasSpace.s8,
+                  runSpacing: MalasSpace.s4,
+                  children: [
+                    for (final category in viewModel.categoriesForDirection)
+                      _ChoiceLipChip(
+                        label: category.name,
+                        isSelected: category.id == viewModel.categoryId,
+                        onPressed: () => viewModel.selectCategory(category.id),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(
+            MalasSpace.screen,
+            MalasSpace.s8,
+            MalasSpace.screen,
+            MalasSpace.s12,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (errorMessage != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: MalasSpace.s8),
                   child: Text(
                     errorMessage,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                    style: MalasText.bodySecondary.copyWith(
+                      color: MalasColors.textError,
                     ),
                   ),
                 ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                ),
+              LipButton(
+                label: errorMessage == null ? 'Simpan' : 'Coba lagi',
                 onPressed: _buttonAction(context, viewModel),
-                child: Text(errorMessage == null ? 'Simpan' : 'Coba lagi'),
               ),
             ],
           ),
@@ -126,5 +167,55 @@ class KetikView extends StatelessWidget {
     if (savedDraft != null && context.mounted) {
       Navigator.of(context).pop(savedDraft);
     }
+  }
+}
+
+/// A choice chip on the white body. §2 only lists chips on brand, so this
+/// takes the secondary button's tones idle and the primary's when selected.
+class _ChoiceLipChip extends StatelessWidget {
+  const _ChoiceLipChip({
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final variant = isSelected ? LipVariant.primary : LipVariant.secondary;
+    return Semantics(
+      selected: isSelected,
+      child: LipPressable(
+        onPressed: onPressed,
+        fill: variant.fill,
+        lip: variant.lip,
+        borderRadius: BorderRadius.circular(MalasRadius.chip),
+        // Sized to its label, so a Wrap of chips wraps; inside Expanded the
+        // Row is stretched and centres it.
+        child: Container(
+          height: MalasSize.touch - MalasSize.lip,
+          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: MalasText.labelChip.copyWith(
+                    color: variant.foreground,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
