@@ -65,7 +65,7 @@ class BicaraView extends StatelessWidget {
                 MalasSpace.s12,
                 MalasSpace.s12,
                 MalasSpace.s12,
-                MalasSpace.s16,
+                MalasSize.navBar + MalasSpace.s16,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

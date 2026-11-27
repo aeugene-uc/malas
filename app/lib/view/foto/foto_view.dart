@@ -41,6 +41,7 @@ class FotoView extends StatelessWidget {
           // coins.
           BrandHeader(
             title: 'Foto',
+            height: _formHeaderHeight,
             actions: [
               IconButton(
                 tooltip: 'Tutup',
@@ -205,4 +206,5 @@ class _ReadingIndicator extends StatelessWidget {
   }
 }
 
+const _formHeaderHeight = 150.0;
 const _previewHeight = 320.0;

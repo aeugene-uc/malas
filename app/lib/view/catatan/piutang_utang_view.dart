@@ -59,20 +59,23 @@ class _PiutangUtangScreenState extends State<_PiutangUtangScreen> {
                 icon: const Icon(MalasIcons.x),
               ),
             ],
-            controls: Row(
-              children: [
-                _OnBrandToggleChip(
-                  label: 'Piutang ${formatRupiah(viewModel.piutangTotal)}',
-                  isSelected: _isPiutangShown,
-                  onPressed: () => setState(() => _isPiutangShown = true),
-                ),
-                const SizedBox(width: MalasSpace.s8),
-                _OnBrandToggleChip(
-                  label: 'Utang ${formatRupiah(viewModel.utangTotal)}',
-                  isSelected: !_isPiutangShown,
-                  onPressed: () => setState(() => _isPiutangShown = false),
-                ),
-              ],
+            controls: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _OnBrandToggleChip(
+                    label: _toggleLabel('Piutang', viewModel.piutangTotal),
+                    isSelected: _isPiutangShown,
+                    onPressed: () => setState(() => _isPiutangShown = true),
+                  ),
+                  const SizedBox(width: MalasSpace.s8),
+                  _OnBrandToggleChip(
+                    label: _toggleLabel('Utang', viewModel.utangTotal),
+                    isSelected: !_isPiutangShown,
+                    onPressed: () => setState(() => _isPiutangShown = false),
+                  ),
+                ],
+              ),
             ),
           ),
           Padding(
@@ -130,7 +133,7 @@ class _OnBrandToggleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Flexible(
+    return Expanded(
       child: Semantics(
         selected: isSelected,
         child: LipPressable(
@@ -141,12 +144,18 @@ class _OnBrandToggleChip extends StatelessWidget {
           lip: isSelected ? MalasColors.borderLip : MalasColors.decoGelap2,
           borderRadius: BorderRadius.circular(MalasRadius.chip),
           child: Container(
-            height: MalasSize.touch - MalasSize.lip,
-            padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s12),
+            constraints: const BoxConstraints(
+              minHeight: MalasSize.touch - MalasSize.lip,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: MalasSpace.s12,
+              vertical: MalasSpace.s8,
+            ),
             alignment: Alignment.center,
             child: Text(
               label,
-              maxLines: 1,
+              textAlign: TextAlign.center,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: MalasText.labelChip.copyWith(
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -160,6 +169,12 @@ class _OnBrandToggleChip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Keeps "Rp" glued to the number so wrapping breaks cleanly onto line 2.
+String _toggleLabel(String title, int amount) {
+  final rupiah = formatRupiah(amount).replaceFirst(' ', '\u00A0');
+  return '$title $rupiah';
 }
 
 /// §4.3: skeleton blocks at row size instead of a spinner.
@@ -223,14 +238,15 @@ class _OpenRow extends StatelessWidget {
         .map(describeLine)
         .where((description) => description.isNotEmpty)
         .join(', ');
+    // Date first so it always shows; due date gets its own line below.
     final details = [
-      if (lineDescriptions.isNotEmpty) lineDescriptions,
       formatEntryDate(transaction.businessDate),
-      if (transaction.dueDate case final dueDate?)
-        'Jatuh tempo ${formatEntryDate(dueDate)}',
+      if (lineDescriptions.isNotEmpty) lineDescriptions,
     ];
+    final dueDate = transaction.dueDate;
     final canRemind = isPiutang;
     final canPay = !transaction.isKembalikan;
+    const textIndent = MalasSpace.s16 + MalasSize.categoryTile + MalasSpace.s12;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -247,10 +263,25 @@ class _OpenRow extends StatelessWidget {
               const TagChip('Kembalikan', tone: TagTone.perhatian),
           ],
         ),
+        if (dueDate != null)
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              textIndent,
+              0,
+              MalasSpace.s16,
+              canRemind || canPay ? MalasSpace.s8 : MalasSpace.s12,
+            ),
+            child: Text(
+              'Jatuh tempo ${formatEntryDate(dueDate)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: MalasText.bodySecondary,
+            ),
+          ),
         if (canRemind || canPay)
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              MalasSpace.s16 + MalasSize.categoryTile + MalasSpace.s12,
+              textIndent,
               0,
               MalasSpace.s16,
               MalasSpace.s12,

@@ -41,6 +41,7 @@ class SettingsView extends StatelessWidget {
           // coins.
           BrandHeader(
             title: 'Pengaturan',
+            height: _formHeaderHeight,
             actions: [
               IconButton(
                 tooltip: 'Tutup',
@@ -372,6 +373,7 @@ class _SheetHandle extends StatelessWidget {
   }
 }
 
+const _formHeaderHeight = 150.0;
 const _handleWidth = 40.0;
 const _handleHeight = 5.0;
 

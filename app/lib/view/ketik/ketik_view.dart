@@ -55,6 +55,7 @@ class KetikView extends StatelessWidget {
           // coins.
           BrandHeader(
             title: 'Ketik',
+            height: _formHeaderHeight,
             actions: [
               IconButton(
                 tooltip: 'Tutup',
@@ -170,3 +171,5 @@ class KetikView extends StatelessWidget {
     }
   }
 }
+
+const _formHeaderHeight = 150.0;

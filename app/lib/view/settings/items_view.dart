@@ -35,6 +35,7 @@ class ItemsView extends StatelessWidget {
           // coins.
           BrandHeader(
             title: 'Barang dan satuan',
+            height: _formHeaderHeight,
             actions: [
               IconButton(
                 tooltip: 'Tutup',
@@ -289,6 +290,7 @@ class _ItemSheetState extends State<_ItemSheet> {
   }
 }
 
+const _formHeaderHeight = 150.0;
 const _skeletonRowCount = 3;
 
 /// §4.2 sheet handle.
