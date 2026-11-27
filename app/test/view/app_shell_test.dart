@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/auth_repository.dart';
 import 'package:malas/main.dart';
+import 'package:malas/viewmodel/app_shell_view_model.dart';
 
 void main() {
   testWidgets('opensOnBerandaAndSwitchesTabWhenTapped', (tester) async {
@@ -19,12 +20,7 @@ void main() {
 
     expect(_selectedTabIndex(tester), 0);
 
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Catatan'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.catatan)));
     await tester.pumpAndSettle();
 
     expect(_selectedTabIndex(tester), 1);
@@ -33,5 +29,5 @@ void main() {
 }
 
 int _selectedTabIndex(WidgetTester tester) {
-  return tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex;
+  return tester.widget<IndexedStack>(find.byType(IndexedStack)).index!;
 }

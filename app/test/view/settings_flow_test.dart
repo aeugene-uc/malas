@@ -21,7 +21,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Warung Bu Sari'));
+    await tester.tap(find.byTooltip('Pengaturan'));
     await tester.pumpAndSettle();
   }
 

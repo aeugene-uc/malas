@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:malas/data/auth_repository.dart';
 import 'package:malas/main.dart';
+import 'package:malas/viewmodel/app_shell_view_model.dart';
 
 void main() {
   testWidgets('aTypedQuestionGetsAnAnswerWithCodesFigures', (tester) async {
@@ -14,12 +15,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Tanya'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.tanya)));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Apa yang paling laku?');

@@ -48,6 +48,8 @@ void main() {
     await _setUpANewStore(tester);
     expect(find.text('Catat penjualan pertama'), findsOneWidget);
 
+    await tester.longPress(find.bySemanticsLabel('Bicara').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ketik'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '30000');

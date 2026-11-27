@@ -47,25 +47,20 @@ void main() {
   testWidgets('showsTodayComparisonsCardsAndEntries', (tester) async {
     await _pumpBeranda(tester, mockBodiesByRoute);
 
-    expect(find.text('Rp 420.000'), findsOneWidget);
-    expect(find.text('Rp 150.000'), findsOneWidget);
-    expect(
-      find.text('Kemarin Rp 1.020.000 · Selasa lalu Rp 790.000'),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Rp 420.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('\u2212Rp 150.000'), findsOneWidget);
+    expect(find.text('Kemarin Rp 1.020.000'), findsOneWidget);
+    expect(find.text('Selasa lalu Rp 790.000'), findsOneWidget);
     expect(find.text('Gas naik 12% dari pembelian terakhir'), findsOneWidget);
     expect(find.text('Belum dicatat: Sen'), findsOneWidget);
-    expect(
-      find.text('Piutang Rp 240.000 · Utang Rp 1.200.000'),
-      findsOneWidget,
-    );
-    expect(find.text('Jatuh tempo hari ini: 2'), findsOneWidget);
+    expect(find.bySemanticsLabel('Piutang Rp 240.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('Utang Rp 1.200.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('Jatuh tempo 2 hari ini'), findsOneWidget);
     expect(find.text('3 menunggu dibaca'), findsOneWidget);
-    expect(find.text('Nasi goreng 2 porsi, Es teh 4 gelas'), findsOneWidget);
-    expect(find.text('+Rp 42.000'), findsOneWidget);
-    for (final label in ['Bicara', 'Foto', 'Ketik']) {
-      expect(find.text(label), findsOneWidget);
-    }
+    // Item names as the title; the quantity goes in the meta (DESIGN.md §3).
+    expect(find.text('Nasi goreng, Es teh'), findsOneWidget);
+    // The row and the Hari ini total, since it is today's only Masuk.
+    expect(find.bySemanticsLabel('+Rp 42.000'), findsNWidgets(2));
   });
 
   testWidgets('leavesOutCardsTheServerLeftOut', (tester) async {
@@ -78,12 +73,12 @@ void main() {
       },
     });
 
-    expect(find.text('Utang Rp 50.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('Utang Rp 50.000'), findsOneWidget);
     expect(find.textContaining('Piutang'), findsNothing);
     expect(find.textContaining('Belum dicatat'), findsNothing);
     expect(find.textContaining('Jatuh tempo'), findsNothing);
     expect(find.textContaining('menunggu dibaca'), findsNothing);
-    expect(find.text('Catatan hari ini'), findsNothing);
+    expect(find.text('Hari ini'), findsNothing);
   });
 
   testWidgets('offersCobaLagiWhenTheFirstLoadFails', (tester) async {

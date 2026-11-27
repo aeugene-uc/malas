@@ -17,6 +17,8 @@ import 'package:provider/provider.dart';
 
 import '../support/recording_adapter.dart';
 
+import 'package:malas/viewmodel/app_shell_view_model.dart';
+
 void main() {
   Future<void> openCatatan(WidgetTester tester) async {
     FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
@@ -30,12 +32,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Catatan'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.catatan)));
     await tester.pumpAndSettle();
   }
 
@@ -57,9 +54,8 @@ void main() {
         adapter.requests.where((r) => r.path == '/transactions').length;
     Future<void> openTab(String label) async {
       await tester.tap(
-        find.descendant(
-          of: find.byType(NavigationBar),
-          matching: find.text(label),
+        find.byKey(
+          ValueKey(AppTab.values.firstWhere((tab) => tab.label == label)),
         ),
       );
       await tester.pumpAndSettle();
@@ -91,9 +87,8 @@ void main() {
         adapter.requests.where((r) => r.path == '/home').length;
     Future<void> openTab(String label) async {
       await tester.tap(
-        find.descendant(
-          of: find.byType(NavigationBar),
-          matching: find.text(label),
+        find.byKey(
+          ValueKey(AppTab.values.firstWhere((tab) => tab.label == label)),
         ),
       );
       await tester.pumpAndSettle();
@@ -271,12 +266,7 @@ void main() {
 
   testWidgets('anAnalisisRowOpensCatatanNarrowedToIt', (tester) async {
     await openCatatan(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Analisis'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.analisis)));
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(find.text('Sewa'), 100);
@@ -290,15 +280,10 @@ void main() {
 
   testWidgets('theBerandaPiutangCardOpensPiutangUtang', (tester) async {
     await openCatatan(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Beranda'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.beranda)));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Piutang Rp 240.000'));
+    await tester.tap(find.text('Piutang'));
     await tester.pumpAndSettle();
 
     expect(find.byType(PiutangUtangView), findsOneWidget);
