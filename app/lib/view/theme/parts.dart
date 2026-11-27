@@ -152,12 +152,18 @@ class TagChip extends StatelessWidget {
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s8),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: tone.fill,
         borderRadius: BorderRadius.circular(MalasRadius.xs),
       ),
-      child: Text(label, style: MalasText.labelTag.copyWith(color: tone.text)),
+      // widthFactor 1: the tag hugs its label instead of filling the row.
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          label,
+          style: MalasText.labelTag.copyWith(color: tone.text),
+        ),
+      ),
     );
   }
 }

@@ -41,7 +41,10 @@ class BrandHeader extends StatelessWidget {
             top: topInset,
             child: ExcludeSemantics(
               child: CustomPaint(
-                painter: _SceneryPainter(hasCoins: actions.isEmpty),
+                painter: _SceneryPainter(
+                  hasCoins: actions.isEmpty,
+                  hasSmallCoin: controls == null,
+                ),
               ),
             ),
           ),
@@ -98,9 +101,12 @@ class BrandHeader extends StatelessWidget {
 /// §5.1 hill paths, authored for a 360 × 262 header: x scales with width,
 /// y shifts with height.
 class _SceneryPainter extends CustomPainter {
-  const _SceneryPainter({required this.hasCoins});
+  const _SceneryPainter({required this.hasCoins, required this.hasSmallCoin});
 
   final bool hasCoins;
+
+  /// The small coin sits where controls start, so it's left out with them.
+  final bool hasSmallCoin;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -129,7 +135,7 @@ class _SceneryPainter extends CustomPainter {
         canvas.drawPath(path, Paint()..color = color);
     if (hasCoins) {
       _coin(canvas, Offset(286 * sx, 36), 46);
-      _coin(canvas, Offset(246 * sx, 70), 28);
+      if (hasSmallCoin) _coin(canvas, Offset(246 * sx, 70), 28);
       _sparkle(canvas, Offset(222 * sx, 40), 12, MalasColors.textOnBrand);
       _sparkle(canvas, Offset(334 * sx, 92), 10, MalasColors.decoTerang);
     }
@@ -190,5 +196,6 @@ class _SceneryPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SceneryPainter oldDelegate) =>
-      oldDelegate.hasCoins != hasCoins;
+      oldDelegate.hasCoins != hasCoins ||
+      oldDelegate.hasSmallCoin != hasSmallCoin;
 }
