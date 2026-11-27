@@ -47,6 +47,16 @@ class KetikView extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<KetikViewModel>();
     final errorMessage = viewModel.errorMessage;
+    final isMasuk = viewModel.direction == Direction.masuk;
+    final amountColor = isMasuk
+        ? MalasColors.textMasuk
+        : MalasColors.textPrimary;
+    const underline = UnderlineInputBorder(
+      borderSide: BorderSide(
+        color: MalasColors.bgBrand,
+        width: MalasSize.cardStroke,
+      ),
+    );
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.zero,
@@ -75,81 +85,101 @@ class KetikView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    for (final (index, direction)
-                        in Direction.values.indexed) ...[
-                      if (index > 0) const SizedBox(width: MalasSpace.s8),
-                      Expanded(
-                        child: SelectChip(
-                          label: direction == Direction.masuk
-                              ? 'Masuk'
-                              : 'Keluar',
-                          isSelected: viewModel.direction == direction,
-                          onPressed: () => viewModel.selectDirection(direction),
-                        ),
-                      ),
-                    ],
-                  ],
+                SegmentedSelector(
+                  labels: const ['Masuk', 'Keluar'],
+                  selectedIndex: isMasuk ? 0 : 1,
+                  onSelected: (index) => viewModel.selectDirection(
+                    index == 0 ? Direction.masuk : Direction.keluar,
+                  ),
                 ),
-                const SizedBox(height: MalasSpace.s16),
+                const SizedBox(height: MalasSpace.s24),
+                Text('Jumlah', style: MalasText.bodySecondary),
+                const SizedBox(height: MalasSpace.s8),
                 TextField(
                   autofocus: true,
                   keyboardType: TextInputType.number,
                   inputFormatters: [RupiahInputFormatter()],
-                  style: MalasText.moneyLarge,
-                  decoration: const InputDecoration(
-                    labelText: 'Jumlah',
-                    prefixText: 'Rp ',
+                  style: MalasText.moneyHero.copyWith(color: amountColor),
+                  decoration: InputDecoration(
+                    filled: false,
+                    hintText: '0',
+                    hintStyle: MalasText.moneyHero.copyWith(
+                      color: MalasColors.textDisabled,
+                    ),
+                    prefixText: isMasuk ? '+Rp ' : '−Rp ',
+                    prefixStyle: MalasText.rpHero.copyWith(color: amountColor),
+                    contentPadding: const EdgeInsets.only(
+                      bottom: MalasSpace.s8,
+                    ),
+                    border: underline,
+                    enabledBorder: underline,
+                    focusedBorder: underline,
                   ),
                   onChanged: (text) =>
                       viewModel.setAmount(parseRupiahInput(text)),
                 ),
-                const SizedBox(height: MalasSpace.s16),
-                Wrap(
-                  spacing: MalasSpace.s8,
-                  runSpacing: MalasSpace.s4,
-                  children: [
-                    for (final category in viewModel.categoriesForDirection)
-                      SelectChip(
-                        label: category.name,
-                        isSelected: category.id == viewModel.categoryId,
-                        onPressed: () => viewModel.selectCategory(category.id),
-                      ),
-                  ],
-                ),
+                if (viewModel.categoriesForDirection.isNotEmpty) ...[
+                  const SizedBox(height: MalasSpace.s24),
+                  Text('Kategori', style: MalasText.bodySecondary),
+                  const SizedBox(height: MalasSpace.s12),
+                  Wrap(
+                    spacing: MalasSpace.s8,
+                    runSpacing: MalasSpace.s8,
+                    children: [
+                      for (final category in viewModel.categoriesForDirection)
+                        SelectChip(
+                          label: category.name,
+                          isSelected: category.id == viewModel.categoryId,
+                          onPressed: () =>
+                              viewModel.selectCategory(category.id),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MalasSpace.screen,
-            MalasSpace.s8,
-            MalasSpace.screen,
-            MalasSpace.s12,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: MalasColors.bgSurface,
+          border: Border(
+            top: BorderSide(
+              color: MalasColors.borderCard,
+              width: MalasSize.cardStroke,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: MalasSpace.s8),
-                  child: Text(
-                    errorMessage,
-                    style: MalasText.bodySecondary.copyWith(
-                      color: MalasColors.textError,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: MalasSpace.s8),
+                    child: Text(
+                      errorMessage,
+                      style: MalasText.bodySecondary.copyWith(
+                        color: MalasColors.textError,
+                      ),
                     ),
                   ),
+                LipButton(
+                  label: errorMessage == null ? 'Simpan' : 'Coba lagi',
+                  onPressed: _buttonAction(context, viewModel),
                 ),
-              LipButton(
-                label: errorMessage == null ? 'Simpan' : 'Coba lagi',
-                onPressed: _buttonAction(context, viewModel),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -34,8 +36,8 @@ class FotoView extends StatelessWidget {
     final imageBytes = viewModel.imageBytes;
     final errorMessage = viewModel.errorMessage;
     return Scaffold(
-      body: ListView(
-        padding: EdgeInsets.zero,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // §5.4: a form keeps only the header hills; the action hides the
           // coins.
@@ -51,84 +53,129 @@ class FotoView extends StatelessWidget {
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              MalasSpace.screen,
-              MalasSpace.s8,
-              MalasSpace.screen,
-              MalasSpace.s24,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    for (final (index, kind) in PhotoKind.values.indexed) ...[
-                      if (index > 0) const SizedBox(width: MalasSpace.s8),
-                      Expanded(
-                        child: SelectChip(
-                          label: kind == PhotoKind.nota
-                              ? 'Nota'
-                              : 'Buku catatan',
-                          isSelected: viewModel.kind == kind,
-                          onPressed: () => viewModel.selectKind(kind),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (imageBytes != null) ...[
-                  const SizedBox(height: MalasSpace.s16),
-                  // A flat card (§2): the photo is information.
-                  Container(
-                    height: _previewHeight,
-                    decoration: BoxDecoration(
-                      color: MalasColors.bgSurface,
-                      borderRadius: BorderRadius.circular(MalasRadius.lg),
-                      border: Border.all(
-                        color: MalasColors.borderCard,
-                        width: MalasSize.cardStroke,
-                      ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MalasSpace.screen,
+                MalasSpace.s8,
+                MalasSpace.screen,
+                MalasSpace.s24,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedSelector(
+                    labels: const ['Nota', 'Buku catatan'],
+                    selectedIndex: viewModel.kind == PhotoKind.nota ? 0 : 1,
+                    onSelected: (index) => viewModel.selectKind(
+                      index == 0 ? PhotoKind.nota : PhotoKind.bukuCatatan,
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.memory(imageBytes, fit: BoxFit.contain),
+                  ),
+                  const SizedBox(height: MalasSpace.s24),
+                  Expanded(
+                    child: imageBytes == null
+                        ? const _EmptyPhotoCard()
+                        : _PhotoPreviewCard(imageBytes: imageBytes),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MalasSpace.screen,
-            MalasSpace.s8,
-            MalasSpace.screen,
-            MalasSpace.s12,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: MalasColors.bgSurface,
+          border: Border(
+            top: BorderSide(
+              color: MalasColors.borderCard,
+              width: MalasSize.cardStroke,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: MalasSpace.s8),
-                  child: Text(
-                    errorMessage,
-                    style: MalasText.bodySecondary.copyWith(
-                      color: MalasColors.textError,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: MalasSpace.s8),
+                    child: Text(
+                      errorMessage,
+                      style: MalasText.bodySecondary.copyWith(
+                        color: MalasColors.textError,
+                      ),
                     ),
                   ),
-                ),
-              if (viewModel.isReading)
-                const _ReadingIndicator()
-              else
-                _Controls(viewModel: viewModel),
-            ],
+                if (viewModel.isReading)
+                  const _ReadingIndicator()
+                else
+                  _Controls(viewModel: viewModel),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _EmptyPhotoCard extends StatelessWidget {
+  const _EmptyPhotoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: MalasColors.bgBrandSoft,
+        borderRadius: BorderRadius.circular(MalasRadius.lg),
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(MalasSpace.s24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            MalasIcons.cameraFill,
+            size: _emptyCameraIconSize,
+            color: MalasColors.iconBrand,
+          ),
+          const SizedBox(height: MalasSpace.s12),
+          Text('Belum ada foto', style: MalasText.bodySecondary),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoPreviewCard extends StatelessWidget {
+  const _PhotoPreviewCard({required this.imageBytes});
+
+  final Uint8List imageBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    // A flat card (§2): the photo is information.
+    return Container(
+      decoration: BoxDecoration(
+        color: MalasColors.bgSurface,
+        borderRadius: BorderRadius.circular(MalasRadius.lg),
+        border: Border.all(
+          color: MalasColors.borderCard,
+          width: MalasSize.cardStroke,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.memory(imageBytes, fit: BoxFit.contain),
     );
   }
 }
@@ -140,9 +187,33 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!viewModel.hasImage) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LipButton(
+            label: 'Kamera',
+            icon: MalasIcons.camera,
+            onPressed: () => viewModel.pickImage(ImageSource.camera),
+          ),
+          const SizedBox(height: MalasSpace.s12),
+          LipButton(
+            label: 'Galeri',
+            icon: MalasIcons.image,
+            variant: LipVariant.secondary,
+            onPressed: () => viewModel.pickImage(ImageSource.gallery),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        LipButton(
+          label: viewModel.errorMessage == null ? 'Baca' : 'Coba lagi',
+          onPressed: () => _readAndClose(context),
+        ),
+        const SizedBox(height: MalasSpace.s12),
         Row(
           children: [
             Expanded(
@@ -150,6 +221,7 @@ class _Controls extends StatelessWidget {
                 label: 'Kamera',
                 icon: MalasIcons.camera,
                 variant: LipVariant.secondary,
+                isSmall: true,
                 onPressed: () => viewModel.pickImage(ImageSource.camera),
               ),
             ),
@@ -159,18 +231,12 @@ class _Controls extends StatelessWidget {
                 label: 'Galeri',
                 icon: MalasIcons.image,
                 variant: LipVariant.secondary,
+                isSmall: true,
                 onPressed: () => viewModel.pickImage(ImageSource.gallery),
               ),
             ),
           ],
         ),
-        if (viewModel.hasImage) ...[
-          const SizedBox(height: MalasSpace.s12),
-          LipButton(
-            label: viewModel.errorMessage == null ? 'Baca' : 'Coba lagi',
-            onPressed: () => _readAndClose(context),
-          ),
-        ],
       ],
     );
   }
@@ -207,4 +273,4 @@ class _ReadingIndicator extends StatelessWidget {
 }
 
 const _formHeaderHeight = 150.0;
-const _previewHeight = 320.0;
+const _emptyCameraIconSize = 48.0;
