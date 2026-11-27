@@ -8,6 +8,7 @@ import '../../viewmodel/foto_view_model.dart';
 import '../theme/brand_header.dart';
 import '../theme/icons.dart';
 import '../theme/lip.dart';
+import '../theme/parts.dart';
 import '../theme/tokens.dart';
 
 /// Opened from the hold menu's Foto. Pops with the [AiReadResult], which the
@@ -64,7 +65,7 @@ class FotoView extends StatelessWidget {
                     for (final (index, kind) in PhotoKind.values.indexed) ...[
                       if (index > 0) const SizedBox(width: MalasSpace.s8),
                       Expanded(
-                        child: _ChoiceLipChip(
+                        child: ChoiceLipChip(
                           label: kind == PhotoKind.nota
                               ? 'Nota'
                               : 'Buku catatan',
@@ -199,56 +200,6 @@ class _ReadingIndicator extends StatelessWidget {
           const SizedBox(width: MalasSpace.s12),
           Text('Membaca…', style: MalasText.bodyStrong),
         ],
-      ),
-    );
-  }
-}
-
-/// A choice chip on the white body. §2 only lists chips on brand, so this
-/// takes the secondary button's tones idle and the primary's when selected.
-class _ChoiceLipChip extends StatelessWidget {
-  const _ChoiceLipChip({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final variant = isSelected ? LipVariant.primary : LipVariant.secondary;
-    return Semantics(
-      selected: isSelected,
-      child: LipPressable(
-        onPressed: onPressed,
-        fill: variant.fill,
-        lip: variant.lip,
-        borderRadius: BorderRadius.circular(MalasRadius.chip),
-        // Sized to its label, so a Wrap of chips wraps; inside Expanded the
-        // Row is stretched and centres it.
-        child: Container(
-          height: MalasSize.touch - MalasSize.lip,
-          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MalasText.labelChip.copyWith(
-                    color: variant.foreground,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

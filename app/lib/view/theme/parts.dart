@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../model/transaction.dart';
 import '../format.dart';
-import 'tokens.dart';
 import 'icons.dart';
+import 'lip.dart';
+import 'tokens.dart';
 
 /// §1.2: money is a prefix and a number on one baseline, 4 apart. Masuk is
 /// green `+Rp`, Keluar `−Rp` (U+2212), anything else plain `Rp`.
@@ -333,6 +334,57 @@ class EntryRowFor extends StatelessWidget {
         if (entry.editCount > 0) TagChip('Diubah ${entry.editCount}x'),
         if (entry.hasRetur) const TagChip('Ada retur'),
       ],
+    );
+  }
+}
+
+/// A choice chip on the white body. §2 only lists chips on brand, so this
+/// takes the secondary button's tones idle and the primary's when selected.
+class ChoiceLipChip extends StatelessWidget {
+  const ChoiceLipChip({
+    super.key,
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final variant = isSelected ? LipVariant.primary : LipVariant.secondary;
+    return Semantics(
+      selected: isSelected,
+      child: LipPressable(
+        onPressed: onPressed,
+        fill: variant.fill,
+        lip: variant.lip,
+        borderRadius: BorderRadius.circular(MalasRadius.chip),
+        // Sized to its label, so a Wrap of chips wraps; inside Expanded the
+        // Row is stretched and centres it.
+        child: Container(
+          height: MalasSize.touch - MalasSize.lip,
+          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: MalasText.labelChip.copyWith(
+                    color: variant.foreground,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

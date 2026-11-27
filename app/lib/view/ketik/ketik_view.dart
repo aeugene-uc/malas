@@ -12,6 +12,7 @@ import '../format.dart';
 import '../theme/brand_header.dart';
 import '../theme/icons.dart';
 import '../theme/lip.dart';
+import '../theme/parts.dart';
 import '../theme/tokens.dart';
 
 /// Opens Ketik. A saved amount shows the Batal toast on the caller's screen,
@@ -79,7 +80,7 @@ class KetikView extends StatelessWidget {
                         in Direction.values.indexed) ...[
                       if (index > 0) const SizedBox(width: MalasSpace.s8),
                       Expanded(
-                        child: _ChoiceLipChip(
+                        child: ChoiceLipChip(
                           label: direction == Direction.masuk
                               ? 'Masuk'
                               : 'Keluar',
@@ -109,7 +110,7 @@ class KetikView extends StatelessWidget {
                   runSpacing: MalasSpace.s4,
                   children: [
                     for (final category in viewModel.categoriesForDirection)
-                      _ChoiceLipChip(
+                      ChoiceLipChip(
                         label: category.name,
                         isSelected: category.id == viewModel.categoryId,
                         onPressed: () => viewModel.selectCategory(category.id),
@@ -167,55 +168,5 @@ class KetikView extends StatelessWidget {
     if (savedDraft != null && context.mounted) {
       Navigator.of(context).pop(savedDraft);
     }
-  }
-}
-
-/// A choice chip on the white body. §2 only lists chips on brand, so this
-/// takes the secondary button's tones idle and the primary's when selected.
-class _ChoiceLipChip extends StatelessWidget {
-  const _ChoiceLipChip({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final variant = isSelected ? LipVariant.primary : LipVariant.secondary;
-    return Semantics(
-      selected: isSelected,
-      child: LipPressable(
-        onPressed: onPressed,
-        fill: variant.fill,
-        lip: variant.lip,
-        borderRadius: BorderRadius.circular(MalasRadius.chip),
-        // Sized to its label, so a Wrap of chips wraps; inside Expanded the
-        // Row is stretched and centres it.
-        child: Container(
-          height: MalasSize.touch - MalasSize.lip,
-          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MalasText.labelChip.copyWith(
-                    color: variant.foreground,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

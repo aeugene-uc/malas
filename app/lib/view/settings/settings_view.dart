@@ -64,7 +64,7 @@ class SettingsView extends StatelessWidget {
                 _ChipWrap(
                   children: [
                     for (final type in BusinessType.values)
-                      _ChoiceLipChip(
+                      ChoiceLipChip(
                         label: type.label,
                         isSelected: viewModel.businessTypes.contains(type),
                         onPressed: () => viewModel.toggleBusinessType(type),
@@ -80,7 +80,7 @@ class SettingsView extends StatelessWidget {
                       weekday <= DateTime.sunday;
                       weekday++
                     )
-                      _ChoiceLipChip(
+                      ChoiceLipChip(
                         label: formatIsoWeekdayShort(weekday),
                         isSelected: viewModel.closedDays.contains(weekday),
                         onPressed: () => viewModel.toggleClosedDay(weekday),
@@ -345,47 +345,6 @@ class _SettingRow extends StatelessWidget {
                   color: MalasColors.textMeta,
                 ),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A choice chip on the white body. §2 only lists chips on brand, so this
-/// takes the secondary button's tones idle and the primary's when selected.
-class _ChoiceLipChip extends StatelessWidget {
-  const _ChoiceLipChip({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final variant = isSelected ? LipVariant.primary : LipVariant.secondary;
-    return Semantics(
-      selected: isSelected,
-      child: LipPressable(
-        onPressed: onPressed,
-        fill: variant.fill,
-        lip: variant.lip,
-        borderRadius: BorderRadius.circular(MalasRadius.chip),
-        child: Container(
-          height: MalasSize.touch - MalasSize.lip,
-          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: MalasText.labelChip.copyWith(color: variant.foreground),
-              ),
             ],
           ),
         ),
