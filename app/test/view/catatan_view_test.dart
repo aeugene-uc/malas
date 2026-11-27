@@ -246,7 +246,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Pak Budi'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Utang Rp'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SegmentedSelector),
+        matching: find.text('Utang'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Kembalikan'), findsOneWidget);
     expect(find.bySemanticsLabel('Rp 50.000'), findsOneWidget);

@@ -13,9 +13,11 @@ import '../theme/parts.dart';
 import '../theme/tokens.dart';
 import 'items_view.dart';
 
-/// Opened from the business name on Beranda (§6).
+/// Opened from Pengaturan on Beranda (§6).
 class SettingsView extends StatelessWidget {
-  const SettingsView({super.key});
+  const SettingsView({super.key, this.storeName});
+
+  final String? storeName;
 
   static Route<void> route(Account account) {
     return MaterialPageRoute(
@@ -24,7 +26,7 @@ class SettingsView extends StatelessWidget {
           account: account,
           storeRepository: context.read<StoreRepository>(),
         ),
-        child: const SettingsView(),
+        child: SettingsView(storeName: account.store.name),
       ),
     );
   }
@@ -33,6 +35,10 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<SettingsViewModel>();
     final reminderTime = viewModel.reminderTime;
+    final resolvedStoreName =
+        storeName ??
+        context.watch<SessionViewModel?>()?.account?.store.name ??
+        '';
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.zero,
@@ -54,61 +60,37 @@ class SettingsView extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               MalasSpace.screen,
-              MalasSpace.s8,
+              MalasSpace.s16,
               MalasSpace.screen,
               MalasSpace.s24,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SectionHeader(title: 'Jenis usaha'),
-                _ChipWrap(
-                  children: [
-                    for (final type in BusinessType.values)
-                      SelectChip(
-                        label: type.label,
-                        isSelected: viewModel.businessTypes.contains(type),
-                        onPressed: () => viewModel.toggleBusinessType(type),
-                      ),
+                const SectionHeader(title: 'Usaha'),
+                _SettingsCard(
+                  rows: [
+                    _SettingRow(label: 'Nama usaha', value: resolvedStoreName),
+                    _SettingRow(
+                      label: 'Jenis usaha',
+                      value: _formatBusinessTypes(viewModel.businessTypes),
+                      onTap: () => _pickBusinessTypes(context),
+                    ),
+                    _SettingRow(
+                      label: 'Hari tutup',
+                      value: _formatClosedDays(viewModel.closedDays),
+                      onTap: () => _pickClosedDays(context),
+                    ),
                   ],
                 ),
                 const SizedBox(height: MalasSpace.s24),
-                const SectionHeader(title: 'Hari tutup'),
-                _ChipWrap(
-                  children: [
-                    for (
-                      var weekday = DateTime.monday;
-                      weekday <= DateTime.sunday;
-                      weekday++
-                    )
-                      SelectChip(
-                        label: formatIsoWeekdayShort(weekday),
-                        isSelected: viewModel.closedDays.contains(weekday),
-                        onPressed: () => viewModel.toggleClosedDay(weekday),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: MalasSpace.s24),
+                const SectionHeader(title: 'Pengingat'),
                 _SettingsCard(
                   rows: [
                     _SettingRow(
                       label: 'Ganti hari',
-                      trailing: DropdownButton<int>(
-                        value: viewModel.dayChangeHour,
-                        underline: const SizedBox.shrink(),
-                        style: MalasText.bodyStrong,
-                        icon: const Icon(MalasIcons.caretDown, size: 20),
-                        onChanged: (hour) {
-                          if (hour != null) viewModel.selectDayChangeHour(hour);
-                        },
-                        items: [
-                          for (final hour in SettingsViewModel.dayChangeHours)
-                            DropdownMenuItem(
-                              value: hour,
-                              child: Text(_formatHour(hour)),
-                            ),
-                        ],
-                      ),
+                      value: _formatHour(viewModel.dayChangeHour),
+                      onTap: () => _pickDayChangeHour(context),
                     ),
                     _SettingRow(
                       label: 'Pengingat malam',
@@ -136,6 +118,7 @@ class SettingsView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: MalasSpace.s24),
+                const SectionHeader(title: 'Lainnya'),
                 _SettingsCard(
                   rows: [
                     _SettingRow(
@@ -150,11 +133,12 @@ class SettingsView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: MalasSpace.s24),
-                LipButton(
-                  label: 'Keluar',
-                  icon: MalasIcons.signOut,
-                  variant: LipVariant.danger,
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: MalasColors.textError,
+                  ),
                   onPressed: () => _signOut(context),
+                  child: const Text('Keluar'),
                 ),
               ],
             ),
@@ -194,6 +178,64 @@ class SettingsView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _pickBusinessTypes(BuildContext context) async {
+    final viewModel = context.read<SettingsViewModel>();
+    final picked = await showModalBottomSheet<Set<BusinessType>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _MultiSelectSheet<BusinessType>(
+        title: 'Jenis usaha',
+        options: BusinessType.values,
+        labelOf: (type) => type.label,
+        initial: viewModel.businessTypes,
+      ),
+    );
+    if (picked == null) return;
+    for (final type in BusinessType.values) {
+      if (picked.contains(type) != viewModel.businessTypes.contains(type)) {
+        viewModel.toggleBusinessType(type);
+      }
+    }
+  }
+
+  Future<void> _pickClosedDays(BuildContext context) async {
+    final viewModel = context.read<SettingsViewModel>();
+    final weekdays = [
+      for (var day = DateTime.monday; day <= DateTime.sunday; day++) day,
+    ];
+    final picked = await showModalBottomSheet<Set<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _MultiSelectSheet<int>(
+        title: 'Hari tutup',
+        options: weekdays,
+        labelOf: formatIsoWeekdayShort,
+        initial: viewModel.closedDays,
+      ),
+    );
+    if (picked == null) return;
+    for (final day in weekdays) {
+      if (picked.contains(day) != viewModel.closedDays.contains(day)) {
+        viewModel.toggleClosedDay(day);
+      }
+    }
+  }
+
+  Future<void> _pickDayChangeHour(BuildContext context) async {
+    final viewModel = context.read<SettingsViewModel>();
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _SingleSelectSheet<int>(
+        title: 'Ganti hari',
+        options: SettingsViewModel.dayChangeHours,
+        labelOf: _formatHour,
+        initial: viewModel.dayChangeHour,
+      ),
+    );
+    if (picked != null) viewModel.selectDayChangeHour(picked);
   }
 
   Future<void> _pickReminderTime(
@@ -265,17 +307,139 @@ class SettingsView extends StatelessWidget {
   }
 }
 
-class _ChipWrap extends StatelessWidget {
-  const _ChipWrap({required this.children});
+/// §4.2 bottom sheet with flat SelectChips and a primary Pakai button.
+class _MultiSelectSheet<T> extends StatefulWidget {
+  const _MultiSelectSheet({
+    required this.title,
+    required this.options,
+    required this.labelOf,
+    required this.initial,
+  });
 
-  final List<Widget> children;
+  final String title;
+  final List<T> options;
+  final String Function(T) labelOf;
+  final Set<T> initial;
+
+  @override
+  State<_MultiSelectSheet<T>> createState() => _MultiSelectSheetState<T>();
+}
+
+class _MultiSelectSheetState<T> extends State<_MultiSelectSheet<T>> {
+  late final Set<T> _selected = {...widget.initial};
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: MalasSpace.s8,
-      runSpacing: MalasSpace.s4,
-      children: children,
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          MalasSpace.screen,
+          MalasSpace.s12,
+          MalasSpace.screen,
+          MalasSpace.s20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SheetHandle(),
+            const SizedBox(height: MalasSpace.s20),
+            Text(widget.title, style: MalasText.titleScreen),
+            const SizedBox(height: MalasSpace.s16),
+            Wrap(
+              spacing: MalasSpace.s8,
+              runSpacing: MalasSpace.s8,
+              children: [
+                for (final option in widget.options)
+                  SelectChip(
+                    label: widget.labelOf(option),
+                    isSelected: _selected.contains(option),
+                    onPressed: () => setState(() {
+                      if (!_selected.remove(option)) _selected.add(option);
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: MalasSpace.s24),
+            LipButton(
+              label: 'Pakai',
+              onPressed: () => Navigator.of(context).pop({..._selected}),
+            ),
+            const SizedBox(height: MalasSpace.s8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SingleSelectSheet<T> extends StatefulWidget {
+  const _SingleSelectSheet({
+    required this.title,
+    required this.options,
+    required this.labelOf,
+    required this.initial,
+  });
+
+  final String title;
+  final List<T> options;
+  final String Function(T) labelOf;
+  final T initial;
+
+  @override
+  State<_SingleSelectSheet<T>> createState() => _SingleSelectSheetState<T>();
+}
+
+class _SingleSelectSheetState<T> extends State<_SingleSelectSheet<T>> {
+  late T _selected = widget.initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          MalasSpace.screen,
+          MalasSpace.s12,
+          MalasSpace.screen,
+          MalasSpace.s20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SheetHandle(),
+            const SizedBox(height: MalasSpace.s20),
+            Text(widget.title, style: MalasText.titleScreen),
+            const SizedBox(height: MalasSpace.s16),
+            Wrap(
+              spacing: MalasSpace.s8,
+              runSpacing: MalasSpace.s8,
+              children: [
+                for (final option in widget.options)
+                  SelectChip(
+                    label: widget.labelOf(option),
+                    isSelected: _selected == option,
+                    onPressed: () => setState(() => _selected = option),
+                  ),
+              ],
+            ),
+            const SizedBox(height: MalasSpace.s24),
+            LipButton(
+              label: 'Pakai',
+              onPressed: () => Navigator.of(context).pop(_selected),
+            ),
+            const SizedBox(height: MalasSpace.s8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -303,7 +467,7 @@ class _SettingsCard extends StatelessWidget {
 }
 
 /// Label on the left; a value, a control or a caret on the right. A row with
-/// [onTap] is the tap target and shows the caret.
+/// [onTap] and no custom [trailing] shows the caret.
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
     required this.label,
@@ -323,20 +487,36 @@ class _SettingRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: MalasSize.row),
+        constraints: const BoxConstraints(minHeight: MalasSpace.s56),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: MalasSpace.s16,
+            vertical: MalasSpace.s12,
+          ),
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MalasText.titleItem,
+              if (value == null)
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: MalasText.titleItem,
+                  ),
+                )
+              else ...[
+                Text(label, style: MalasText.titleItem),
+                const SizedBox(width: MalasSpace.s12),
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: MalasText.bodySecondary,
+                  ),
                 ),
-              ),
-              if (value != null) Text(value, style: MalasText.bodySecondary),
+              ],
               ?trailing,
               if (onTap != null && trailing == null) ...[
                 const SizedBox(width: MalasSpace.s8),
@@ -376,6 +556,22 @@ class _SheetHandle extends StatelessWidget {
 const _formHeaderHeight = 150.0;
 const _handleWidth = 40.0;
 const _handleHeight = 5.0;
+
+String _formatBusinessTypes(Set<BusinessType> types) {
+  if (types.isEmpty) return 'Belum dipilih';
+  return [
+    for (final type in BusinessType.values)
+      if (types.contains(type)) type.label,
+  ].join(', ');
+}
+
+String _formatClosedDays(Set<int> weekdays) {
+  if (weekdays.isEmpty) return 'Tidak ada';
+  return [
+    for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+      if (weekdays.contains(day)) formatIsoWeekdayShort(day),
+  ].join(', ');
+}
 
 String _formatHour(int hour) => '${_twoDigits(hour)}:00';
 

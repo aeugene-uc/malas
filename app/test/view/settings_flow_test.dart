@@ -42,7 +42,11 @@ void main() {
   testWidgets('simpanAfterAnEditGoesBackToBeranda', (tester) async {
     await openSettings(tester);
 
+    await tester.tap(find.text('Hari tutup'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(SelectChip, 'Jum'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(LipButton, 'Pakai'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(LipButton, 'Simpan'));
     await tester.pumpAndSettle();

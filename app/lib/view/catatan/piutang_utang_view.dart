@@ -45,12 +45,16 @@ class _PiutangUtangScreenState extends State<_PiutangUtangScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<PiutangUtangViewModel>();
+    final total = _isPiutangShown
+        ? viewModel.piutangTotal
+        : viewModel.utangTotal;
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
           BrandHeader(
             title: 'Piutang/Utang',
+            height: _headerHeight,
             actions: [
               IconButton(
                 tooltip: 'Tutup',
@@ -59,29 +63,22 @@ class _PiutangUtangScreenState extends State<_PiutangUtangScreen> {
                 icon: const Icon(MalasIcons.x),
               ),
             ],
-            controls: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _OnBrandToggleChip(
-                    label: _toggleLabel('Piutang', viewModel.piutangTotal),
-                    isSelected: _isPiutangShown,
-                    onPressed: () => setState(() => _isPiutangShown = true),
-                  ),
-                  const SizedBox(width: MalasSpace.s8),
-                  _OnBrandToggleChip(
-                    label: _toggleLabel('Utang', viewModel.utangTotal),
-                    isSelected: !_isPiutangShown,
-                    onPressed: () => setState(() => _isPiutangShown = false),
-                  ),
-                ],
-              ),
+            controls: SegmentedSelector(
+              labels: const ['Piutang', 'Utang'],
+              values: [
+                formatRupiah(viewModel.piutangTotal),
+                formatRupiah(viewModel.utangTotal),
+              ],
+              selectedIndex: _isPiutangShown ? 0 : 1,
+              isOnBrand: true,
+              onSelected: (index) =>
+                  setState(() => _isPiutangShown = index == 0),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               MalasSpace.screen,
-              MalasSpace.s8,
+              MalasSpace.s16,
               MalasSpace.screen,
               MalasSpace.s24,
             ),
@@ -108,6 +105,7 @@ class _PiutangUtangScreenState extends State<_PiutangUtangScreen> {
                 transactions: _isPiutangShown
                     ? viewModel.piutang
                     : viewModel.utang,
+                total: total,
                 isPiutang: _isPiutangShown,
               ),
             },
@@ -116,65 +114,6 @@ class _PiutangUtangScreenState extends State<_PiutangUtangScreen> {
       ),
     );
   }
-}
-
-/// §2 filter chip on brand: idle sits on the darker brand, selected turns
-/// white.
-class _OnBrandToggleChip extends StatelessWidget {
-  const _OnBrandToggleChip({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(
-        selected: isSelected,
-        child: LipPressable(
-          onPressed: onPressed,
-          fill: isSelected
-              ? MalasColors.bgOnBrandAction
-              : MalasColors.bgBrandPressed,
-          lip: isSelected ? MalasColors.borderLip : MalasColors.decoGelap2,
-          borderRadius: BorderRadius.circular(MalasRadius.chip),
-          child: Container(
-            constraints: const BoxConstraints(
-              minHeight: MalasSize.touch - MalasSize.lip,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: MalasSpace.s12,
-              vertical: MalasSpace.s8,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: MalasText.labelChip.copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: isSelected
-                    ? MalasColors.textOnBrandAction
-                    : MalasColors.textOnBrand,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Keeps "Rp" glued to the number so wrapping breaks cleanly onto line 2.
-String _toggleLabel(String title, int amount) {
-  final rupiah = formatRupiah(amount).replaceFirst(' ', '\u00A0');
-  return '$title $rupiah';
 }
 
 /// §4.3: skeleton blocks at row size instead of a spinner.
@@ -200,9 +139,14 @@ class _Skeleton extends StatelessWidget {
 }
 
 class _OpenList extends StatelessWidget {
-  const _OpenList({required this.transactions, required this.isPiutang});
+  const _OpenList({
+    required this.transactions,
+    required this.total,
+    required this.isPiutang,
+  });
 
   final List<Transaction> transactions;
+  final int total;
   final bool isPiutang;
 
   @override
@@ -214,16 +158,25 @@ class _OpenList extends StatelessWidget {
         style: MalasText.body,
       );
     }
-    return RowsCard(
-      rows: [
-        for (final transaction in transactions)
-          _OpenRow(transaction: transaction, isPiutang: isPiutang),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: isPiutang ? 'Piutang' : 'Utang',
+          trailing: MoneyText(total),
+        ),
+        RowsCard(
+          rows: [
+            for (final transaction in transactions)
+              _OpenRow(transaction: transaction, isPiutang: isPiutang),
+          ],
+        ),
       ],
     );
   }
 }
 
-/// A §3 row for one person, with Ingatkan and Bayar under the text column.
+/// A §3 row for one person, with Ingatkan and Bayar right-aligned below it.
 class _OpenRow extends StatelessWidget {
   const _OpenRow({required this.transaction, required this.isPiutang});
 
@@ -233,84 +186,89 @@ class _OpenRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final personName = transaction.person?.name ?? 'Tanpa nama';
-    // The person is the row's title, so the meta lists only the lines.
-    final lineDescriptions = transaction.lines
-        .map(describeLine)
-        .where((description) => description.isNotEmpty)
-        .join(', ');
-    // Date first so it always shows; due date gets its own line below.
-    final details = [
-      formatEntryDate(transaction.businessDate),
-      if (lineDescriptions.isNotEmpty) lineDescriptions,
-    ];
     final dueDate = transaction.dueDate;
+    final meta = dueDate != null
+        ? 'Jatuh tempo ${formatEntryDate(dueDate)}'
+        : formatEntryDate(transaction.businessDate);
     final canRemind = isPiutang;
     final canPay = !transaction.isKembalikan;
-    const textIndent = MalasSpace.s16 + MalasSize.categoryTile + MalasSpace.s12;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        EntryRow(
-          title: personName,
-          meta: details.join(' · '),
-          money: MoneyText(transaction.remaining.abs()),
-          tone: isPiutang ? CategoryTone.minuman : CategoryTone.jeruk,
-          icon: isPiutang
-              ? MalasIcons.usersThreeFill
-              : MalasIcons.handCoinsFill,
-          tags: [
-            if (transaction.isKembalikan)
-              const TagChip('Kembalikan', tone: TagTone.perhatian),
-          ],
-        ),
-        if (dueDate != null)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              textIndent,
-              0,
-              MalasSpace.s16,
-              canRemind || canPay ? MalasSpace.s8 : MalasSpace.s12,
-            ),
-            child: Text(
-              'Jatuh tempo ${formatEntryDate(dueDate)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: MalasText.bodySecondary,
-            ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        MalasSpace.s16,
+        MalasSpace.s16,
+        MalasSpace.s16,
+        MalasSpace.s12,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CategoryTile(
+                tone: isPiutang ? CategoryTone.minuman : CategoryTone.jeruk,
+                icon: isPiutang
+                    ? MalasIcons.usersThreeFill
+                    : MalasIcons.handCoinsFill,
+              ),
+              const SizedBox(width: MalasSpace.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            personName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: MalasText.titleItem,
+                          ),
+                        ),
+                        const SizedBox(width: MalasSpace.s12),
+                        MoneyText(transaction.remaining.abs()),
+                      ],
+                    ),
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: MalasText.bodySecondary,
+                    ),
+                    if (transaction.isKembalikan) ...[
+                      const SizedBox(height: MalasSpace.s4),
+                      const TagChip('Kembalikan', tone: TagTone.perhatian),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        if (canRemind || canPay)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              textIndent,
-              0,
-              MalasSpace.s16,
-              MalasSpace.s12,
-            ),
-            // §3 small buttons: equal widths, so they fit at 344.
-            child: Row(
+          if (canRemind || canPay) ...[
+            const SizedBox(height: MalasSpace.s12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (canRemind)
-                  Expanded(
-                    child: LipButton(
-                      label: 'Ingatkan',
-                      variant: LipVariant.secondary,
-                      isSmall: true,
-                      onPressed: () => _remind(transaction, personName),
-                    ),
+                  TextButton(
+                    onPressed: () => _remind(transaction, personName),
+                    child: const Text('Ingatkan'),
                   ),
-                if (canRemind && canPay) const SizedBox(width: MalasSpace.s8),
+                if (canRemind && canPay) const SizedBox(width: MalasSpace.s12),
                 if (canPay)
-                  Expanded(
-                    child: LipButton(
-                      label: 'Bayar',
-                      isSmall: true,
-                      onPressed: () => _askPayment(context, transaction),
-                    ),
+                  LipButton(
+                    label: 'Bayar',
+                    isSmall: true,
+                    onPressed: () => _askPayment(context, transaction),
                   ),
               ],
             ),
-          ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 
@@ -439,6 +397,8 @@ class _PaymentSheetState extends State<_PaymentSheet> {
   }
 }
 
+/// Tall enough for the 2-line SegmentedSelector to clear the far hill (§5.1).
+const _headerHeight = 200.0;
 const _skeletonRowCount = 3;
 
 /// §4.2 sheet handle.
