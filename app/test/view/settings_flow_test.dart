@@ -7,6 +7,7 @@ import 'package:malas/view/beranda/beranda_view.dart';
 import 'package:malas/view/first_run/sign_in_view.dart';
 import 'package:malas/view/settings/items_view.dart';
 import 'package:malas/view/settings/settings_view.dart';
+import 'package:malas/view/theme/lip.dart';
 
 void main() {
   Future<void> openSettings(WidgetTester tester) async {
@@ -30,7 +31,9 @@ void main() {
 
     expect(find.byType(SettingsView), findsOneWidget);
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester
+          .widget<LipButton>(find.widgetWithText(LipButton, 'Simpan'))
+          .onPressed,
       isNull,
     );
   });
@@ -38,9 +41,9 @@ void main() {
   testWidgets('simpanAfterAnEditGoesBackToBeranda', (tester) async {
     await openSettings(tester);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Jum'));
+    await tester.tap(find.widgetWithText(LipPressable, 'Jum'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Simpan'));
+    await tester.tap(find.widgetWithText(LipButton, 'Simpan'));
     await tester.pumpAndSettle();
 
     expect(find.byType(SettingsView), findsNothing);
@@ -99,7 +102,7 @@ void main() {
     await openSettings(tester);
 
     await tapKeluar(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
+    await tester.tap(find.widgetWithText(LipButton, 'Keluar').last);
     await tester.pumpAndSettle();
 
     expect(find.byType(SignInView), findsOneWidget);
