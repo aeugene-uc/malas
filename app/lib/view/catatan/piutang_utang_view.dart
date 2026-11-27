@@ -7,7 +7,6 @@ import '../../data/transaction_repository.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/piutang_utang_view_model.dart';
 import '../format.dart';
-import 'catatan_view.dart' show formatEntryDate;
 
 /// Piutang and Utang (§7.4), from Catatan or Beranda's card.
 class PiutangUtangView extends StatelessWidget {
@@ -137,11 +136,14 @@ class _OpenTile extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                Text(
-                  transaction.isKembalikan
-                      ? 'Kembalikan ${formatRupiah(-transaction.remaining)}'
-                      : formatRupiah(transaction.remaining),
-                  style: Theme.of(context).textTheme.titleMedium,
+                Flexible(
+                  child: Text(
+                    transaction.isKembalikan
+                        ? 'Kembalikan ${formatRupiah(-transaction.remaining)}'
+                        : formatRupiah(transaction.remaining),
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
               ],
             ),
@@ -149,8 +151,8 @@ class _OpenTile extends StatelessWidget {
               details.join(' · '),
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
               children: [
                 if (isPiutang)
                   TextButton(

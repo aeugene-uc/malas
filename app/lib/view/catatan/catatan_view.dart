@@ -295,27 +295,6 @@ Future<void> deleteWithUndo({
   );
 }
 
-/// "Min, 15 Nov".
-String formatEntryDate(String businessDate) {
-  const monthShortNames = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ];
-  final date = DateTime.parse(businessDate);
-  final weekday = formatWeekdayShort(businessDate);
-  return '$weekday, ${date.day} ${monthShortNames[date.month - 1]}';
-}
-
 sealed class _Row {
   const _Row();
 }

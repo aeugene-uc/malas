@@ -14,6 +14,7 @@ import 'model/account.dart';
 import 'data/mock_api_adapter.dart';
 import 'data/mock_bodies.dart';
 import 'data/mock_transaction_store.dart';
+import 'view/theme/malas_theme.dart';
 import 'view/first_run/session_gate.dart';
 import 'viewmodel/app_shell_view_model.dart';
 import 'viewmodel/session_view_model.dart';
@@ -91,9 +92,7 @@ class MalasApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'MALAS',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        ),
+        theme: buildMalasTheme(),
         // Indonesian only, so Flutter's own pickers, menus and screen-reader
         // labels match the app's words on any phone (F11, #26).
         supportedLocales: const [Locale('id')],
