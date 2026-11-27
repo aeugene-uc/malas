@@ -7,6 +7,11 @@ import '../../model/draft.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/draft_view_model.dart';
 import '../format.dart';
+import '../theme/brand_header.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/parts.dart';
+import '../theme/tokens.dart';
 
 /// Opens the draft screen for what a read (Bicara, Foto) or Ketik produced.
 /// After Simpan it shows the 10-second Batal toast (spec §5.2) on the
@@ -54,8 +59,9 @@ Future<void> openDraftScreen(
   if (viewModel.isEditing) {
     // Batal deletes what Simpan made, which here is the entry itself.
     viewModel.dispose();
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Tersimpan')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tersimpan')));
     return;
   }
   await showBatalToast(context, viewModel: viewModel, onChanged: onChanged);
@@ -91,27 +97,61 @@ Future<void> showBatalToast(
   viewModel.dispose();
 }
 
-/// Spec §7.3: every draft from one input, each line as name, quantity and
-/// total. Tapping a line opens the rest. Nothing is saved before Simpan.
+/// Spec §7.3, §8.2: every draft from one input, each line as name, quantity
+/// and total. Tapping a line opens the rest. Nothing is saved before Simpan.
 class DraftView extends StatelessWidget {
   const DraftView({super.key});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<DraftViewModel>();
+    final activeDate = viewModel.businessDate ?? viewModel.businessToday;
     return Scaffold(
-      appBar: AppBar(title: const Text('Draf')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
-          const _DateChips(),
-          const SizedBox(height: 12),
-          for (
-            var draftIndex = 0;
-            draftIndex < viewModel.drafts.length;
-            draftIndex++
-          )
-            _DraftCard(draftIndex: draftIndex),
+          BrandHeader(
+            title: 'Draf',
+            subtitle: formatEntryDate(activeDate),
+            height: _formHeaderHeight,
+            // Passing an action suppresses coins so this form screen keeps
+            // hills only (DESIGN.md §5.4).
+            actions: [
+              IconButton(
+                tooltip: 'Tutup',
+                color: MalasColors.textOnBrand,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(MalasIcons.x),
+              ),
+            ],
+            controls: const _DateChips(),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s8,
+              MalasSpace.screen,
+              MalasSpace.s24,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (
+                  var draftIndex = 0;
+                  draftIndex < viewModel.drafts.length;
+                  draftIndex++
+                )
+                  Padding(
+                    padding: EdgeInsets.only(
+                      bottom: draftIndex < viewModel.drafts.length - 1
+                          ? MalasSpace.s24
+                          : 0,
+                    ),
+                    child: _DraftSection(draftIndex: draftIndex),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: const _SimpanBar(),
@@ -128,25 +168,29 @@ class _DateChips extends StatelessWidget {
     final pickedDate = viewModel.dateChoice == DateChoice.pilihTanggal
         ? viewModel.businessDate
         : null;
-    return Wrap(
-      spacing: 8,
-      children: [
-        ChoiceChip(
-          label: const Text('Hari ini'),
-          selected: viewModel.dateChoice == DateChoice.hariIni,
-          onSelected: (_) => viewModel.selectDate(DateChoice.hariIni),
-        ),
-        ChoiceChip(
-          label: const Text('Kemarin'),
-          selected: viewModel.dateChoice == DateChoice.kemarin,
-          onSelected: (_) => viewModel.selectDate(DateChoice.kemarin),
-        ),
-        ChoiceChip(
-          label: Text(pickedDate ?? 'Pilih tanggal'),
-          selected: viewModel.dateChoice == DateChoice.pilihTanggal,
-          onSelected: (_) => _pickDate(context, viewModel),
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _OnBrandLipChip(
+            label: 'Hari ini',
+            isSelected: viewModel.dateChoice == DateChoice.hariIni,
+            onPressed: () => viewModel.selectDate(DateChoice.hariIni),
+          ),
+          const SizedBox(width: MalasSpace.s8),
+          _OnBrandLipChip(
+            label: 'Kemarin',
+            isSelected: viewModel.dateChoice == DateChoice.kemarin,
+            onPressed: () => viewModel.selectDate(DateChoice.kemarin),
+          ),
+          const SizedBox(width: MalasSpace.s8),
+          _OnBrandLipChip(
+            label: pickedDate ?? 'Pilih tanggal',
+            isSelected: viewModel.dateChoice == DateChoice.pilihTanggal,
+            onPressed: () => _pickDate(context, viewModel),
+          ),
+        ],
+      ),
     );
   }
 
@@ -167,8 +211,53 @@ class _DateChips extends StatelessWidget {
   }
 }
 
-class _DraftCard extends StatelessWidget {
-  const _DraftCard({required this.draftIndex});
+/// DESIGN.md §2 chip on brand: pressed violet with dark lip when idle, white
+/// with deep lip when selected.
+class _OnBrandLipChip extends StatelessWidget {
+  const _OnBrandLipChip({
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: isSelected,
+      child: LipPressable(
+        onPressed: onPressed,
+        fill: isSelected
+            ? MalasColors.bgOnBrandAction
+            : MalasColors.bgBrandPressed,
+        lip: isSelected ? MalasColors.borderLip : MalasColors.decoGelap2,
+        borderRadius: BorderRadius.circular(MalasRadius.chip),
+        child: SizedBox(
+          height: MalasSize.buttonKecil,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+            child: Center(
+              child: Text(
+                label,
+                style: MalasText.labelChip.copyWith(
+                  color: isSelected
+                      ? MalasColors.textOnBrandAction
+                      : MalasColors.textOnBrand,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DraftSection extends StatelessWidget {
+  const _DraftSection({required this.draftIndex});
 
   final int draftIndex;
 
@@ -176,35 +265,37 @@ class _DraftCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<DraftViewModel>();
     final draft = viewModel.drafts[draftIndex];
-    final textTheme = Theme.of(context).textTheme;
     final isMasuk = draft.direction == Direction.masuk;
     final personName = draft.personName;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              title: Text(
-                [isMasuk ? 'Masuk' : 'Keluar', ?personName].join(' · '),
-                style: textTheme.titleMedium,
-              ),
-              subtitle: _describePayment(draft),
-              trailing: Text(
-                formatRupiah(draft.total),
-                style: textTheme.titleMedium,
-              ),
-            ),
-            _WarningChips(
-              warnings: viewModel.warningsFor(draftIndex: draftIndex),
-            ),
-            for (var lineIndex = 0; lineIndex < draft.lines.length; lineIndex++)
-              _LineTile(draftIndex: draftIndex, lineIndex: lineIndex),
-          ],
+    final paymentTag = _paymentTag(draft);
+    final draftWarnings = viewModel.warningsFor(draftIndex: draftIndex);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: [isMasuk ? 'Masuk' : 'Keluar', ?personName].join(' · '),
+          trailing: _draftMoney(draft.direction, draft.total),
         ),
-      ),
+        if (paymentTag != null) ...[
+          Align(alignment: Alignment.centerLeft, child: paymentTag),
+          const SizedBox(height: MalasSpace.s12),
+        ],
+        if (draftWarnings.isNotEmpty) ...[
+          _WarningList(warnings: draftWarnings),
+          const SizedBox(height: MalasSpace.s12),
+        ],
+        if (draft.lines.isNotEmpty)
+          RowsCard(
+            rows: [
+              for (
+                var lineIndex = 0;
+                lineIndex < draft.lines.length;
+                lineIndex++
+              )
+                _DraftLineRow(draftIndex: draftIndex, lineIndex: lineIndex),
+            ],
+          ),
+      ],
     );
   }
 }
@@ -212,14 +303,16 @@ class _DraftCard extends StatelessWidget {
 /// A Retur carries no payments: the server works out on Simpan how much
 /// cancels the original's open balance and how much is cash back (S6). So
 /// only a draft that isn't a Retur reads Belum dibayar.
-Widget? _describePayment(Draft draft) {
-  if (draft.linkedTransactionId != null) return const Text('Retur');
-  if (draft.payments.isEmpty) return const Text('Belum dibayar');
+Widget? _paymentTag(Draft draft) {
+  if (draft.linkedTransactionId != null) return const TagChip('Retur');
+  if (draft.payments.isEmpty) {
+    return const TagChip('Belum dibayar', tone: TagTone.piutang);
+  }
   return null;
 }
 
-class _LineTile extends StatelessWidget {
-  const _LineTile({required this.draftIndex, required this.lineIndex});
+class _DraftLineRow extends StatelessWidget {
+  const _DraftLineRow({required this.draftIndex, required this.lineIndex});
 
   final int draftIndex;
   final int lineIndex;
@@ -227,26 +320,44 @@ class _LineTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<DraftViewModel>();
-    final line = viewModel.drafts[draftIndex].lines[lineIndex];
+    final draft = viewModel.drafts[draftIndex];
+    final line = draft.lines[lineIndex];
     final lineTotal = line.lineTotal;
     final quantityText = describeQuantity(line);
+    final (tone, icon) = _toneForDraftLine(draft.direction, line);
+    final lineWarnings = viewModel.warningsFor(
+      draftIndex: draftIndex,
+      lineIndex: lineIndex,
+    );
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ListTile(
-          dense: true,
+        EntryRow(
           // A bare amount ("bon Pak Budi 30 ribu") has no item.
-          title: Text(line.itemName ?? 'Tanpa barang'),
-          subtitle: quantityText == null ? null : Text(quantityText),
-          trailing: Text(lineTotal == null ? '—' : formatRupiah(lineTotal)),
+          title: line.itemName ?? 'Tanpa barang',
+          meta: quantityText,
+          money: lineTotal == null
+              ? Text(
+                  '—',
+                  style: MalasText.moneyRow.copyWith(
+                    color: MalasColors.textMeta,
+                  ),
+                )
+              : _draftMoney(draft.direction, lineTotal),
+          tone: tone,
+          icon: icon,
           onTap: () => _openLineEditor(context, viewModel),
         ),
-        _WarningChips(
-          warnings: viewModel.warningsFor(
-            draftIndex: draftIndex,
-            lineIndex: lineIndex,
+        if (lineWarnings.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.s16,
+              0,
+              MalasSpace.s16,
+              MalasSpace.s12,
+            ),
+            child: _WarningList(warnings: lineWarnings),
           ),
-        ),
       ],
     );
   }
@@ -259,6 +370,7 @@ class _LineTile extends StatelessWidget {
     final edited = await showModalBottomSheet<LineEdit>(
       context: context,
       isScrollControlled: true,
+      clipBehavior: Clip.antiAlias,
       builder: (_) => LineEditorSheet(line: line),
     );
     if (edited == null) return;
@@ -270,34 +382,49 @@ class _LineTile extends StatelessWidget {
   }
 }
 
-class _WarningChips extends StatelessWidget {
-  const _WarningChips({required this.warnings});
+/// Flat attention card matching Beranda's _AttentionCard look (DESIGN.md §3).
+class _WarningList extends StatelessWidget {
+  const _WarningList({required this.warnings});
 
   final List<ReadWarning> warnings;
 
   @override
   Widget build(BuildContext context) {
-    if (warnings.isEmpty) return const SizedBox.shrink();
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          for (final warning in warnings)
-            Chip(
-              avatar: Icon(
-                Icons.error_outline,
-                size: 18,
-                color: colorScheme.onTertiaryContainer,
-              ),
-              label: Text(warning.message),
-              backgroundColor: colorScheme.tertiaryContainer,
-              labelStyle: TextStyle(color: colorScheme.onTertiaryContainer),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (index, warning) in warnings.indexed) ...[
+          if (index > 0) const SizedBox(height: MalasSpace.s8),
+          Container(
+            constraints: const BoxConstraints(minHeight: MalasSize.row),
+            padding: const EdgeInsets.symmetric(
+              horizontal: MalasSpace.s16,
+              vertical: MalasSpace.s12,
             ),
+            decoration: BoxDecoration(
+              color: MalasColors.bgHighlight,
+              borderRadius: BorderRadius.circular(MalasRadius.lg),
+              border: Border.all(
+                color: MalasColors.borderAttention,
+                width: MalasSize.cardStroke,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  MalasIcons.warningFill,
+                  size: _warningIconSize,
+                  color: MalasColors.borderAttentionLip,
+                ),
+                const SizedBox(width: MalasSpace.s12),
+                Expanded(
+                  child: Text(warning.message, style: MalasText.bodyStrong),
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -309,35 +436,49 @@ class _SimpanBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<DraftViewModel>();
     final errorMessage = viewModel.errorMessage;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  errorMessage,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: MalasColors.bgSurface,
+        border: Border(
+          top: BorderSide(
+            color: MalasColors.borderCard,
+            width: MalasSize.cardStroke,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            MalasSpace.screen,
+            MalasSpace.s12,
+            MalasSpace.screen,
+            MalasSpace.s20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: MalasSpace.s8),
+                  child: Text(
+                    errorMessage,
+                    style: MalasText.bodySecondary.copyWith(
+                      color: MalasColors.textError,
+                    ),
+                  ),
                 ),
+              LipButton(
+                label: viewModel.isSaving
+                    ? 'Menyimpan…'
+                    : (errorMessage == null ? 'Simpan' : 'Coba lagi'),
+                onPressed: viewModel.isSaving
+                    ? null
+                    : () => _simpan(context, viewModel),
               ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(56),
-              ),
-              onPressed: viewModel.isSaving
-                  ? null
-                  : () => _simpan(context, viewModel),
-              child: viewModel.isSaving
-                  ? const SizedBox.square(
-                      dimension: 24,
-                      child: CircularProgressIndicator(strokeWidth: 3),
-                    )
-                  : Text(errorMessage == null ? 'Simpan' : 'Coba lagi'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -423,16 +564,37 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        MalasSpace.screen,
+        MalasSpace.s12,
+        MalasSpace.screen,
+        MalasSpace.s20 + keyboardInset + safeBottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Center(
+            child: Container(
+              width: _handleWidth,
+              height: _handleHeight,
+              decoration: BoxDecoration(
+                color: MalasColors.borderCard,
+                borderRadius: BorderRadius.circular(MalasRadius.xs),
+              ),
+            ),
+          ),
+          const SizedBox(height: MalasSpace.s16),
+          Text('Ubah baris', style: MalasText.titleSection),
+          const SizedBox(height: MalasSpace.s16),
           TextField(
             controller: _nameController,
             decoration: const InputDecoration(labelText: 'Nama'),
           ),
+          const SizedBox(height: MalasSpace.s12),
           Row(
             children: [
               Expanded(
@@ -444,7 +606,7 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
                   decoration: const InputDecoration(labelText: 'Jumlah'),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: MalasSpace.s12),
               Expanded(
                 child: TextField(
                   controller: _unitController,
@@ -453,21 +615,21 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
               ),
             ],
           ),
+          const SizedBox(height: MalasSpace.s12),
           TextField(
             controller: _unitPriceController,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Harga satuan'),
           ),
+          const SizedBox(height: MalasSpace.s12),
           TextField(
             controller: _lineTotalController,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Total'),
           ),
-          const SizedBox(height: 16),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
+          const SizedBox(height: MalasSpace.s20),
+          LipButton(
+            label: 'Pakai',
             onPressed: () => Navigator.of(context).pop(
               LineEdit(
                 itemName: _emptyToNull(_nameController.text),
@@ -477,12 +639,43 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
                 lineTotal: parseRupiahInput(_lineTotalController.text),
               ),
             ),
-            child: const Text('Pakai'),
           ),
         ],
       ),
     );
   }
+}
+
+MoneyText _draftMoney(Direction direction, int amount) {
+  final effect = direction == Direction.masuk ? amount : -amount;
+  return MoneyText(
+    effect.abs(),
+    sign: effect < 0 ? MoneySign.keluar : MoneySign.masuk,
+  );
+}
+
+(CategoryTone, IconData) _toneForDraftLine(
+  Direction direction,
+  DraftLine line,
+) {
+  final name = (line.itemName ?? '').toLowerCase();
+  bool has(List<String> words) => words.any(name.contains);
+  if (has(['minum', 'teh', 'kopi', 'jus', 'es '])) {
+    return (CategoryTone.minuman, MalasIcons.coffeeFill);
+  }
+  if (has(['gas', 'listrik', 'bensin', 'air'])) {
+    return (CategoryTone.merah, MalasIcons.fireFill);
+  }
+  if (has(['bahan', 'beras', 'gula', 'minyak', 'telur', 'sayur'])) {
+    return (CategoryTone.bahan, MalasIcons.basketFill);
+  }
+  if (has(['makan', 'nasi', 'goreng', 'mie', 'ayam'])) {
+    return (CategoryTone.makanan, MalasIcons.bowlFoodFill);
+  }
+  if (direction == Direction.masuk) {
+    return (CategoryTone.penjualan, MalasIcons.storefrontFill);
+  }
+  return (CategoryTone.lainnya, MalasIcons.receiptFill);
 }
 
 String? _emptyToNull(String text) {
@@ -521,3 +714,8 @@ String formatBusinessDate(DateTime date) {
   final day = date.day.toString().padLeft(2, '0');
   return '${date.year}-$month-$day';
 }
+
+const _formHeaderHeight = 216.0;
+const _warningIconSize = 20.0;
+const _handleWidth = 40.0;
+const _handleHeight = 5.0;

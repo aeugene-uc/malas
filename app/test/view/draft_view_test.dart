@@ -20,7 +20,7 @@ void main() {
     expect(find.text('Masuk'), findsOneWidget);
     expect(find.text('Keluar'), findsOneWidget);
     expect(find.text('Masuk · Pak Budi'), findsOneWidget);
-    expect(find.text('Rp 180.000'), findsWidgets);
+    expect(find.bySemanticsLabel('+Rp 180.000'), findsWidgets);
     expect(find.text('Es teh'), findsOneWidget);
     expect(find.text('25'), findsOneWidget);
     expect(find.text('—'), findsOneWidget);
@@ -38,8 +38,8 @@ void main() {
     await tester.tap(find.text('Pakai'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Rp 255.000'), findsOneWidget);
-    expect(find.text('Rp 75.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('+Rp 255.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('+Rp 75.000'), findsOneWidget);
   });
 
   testWidgets('simpanSavesThenBatalDeletesWhatWasSaved', (tester) async {
@@ -115,7 +115,7 @@ void main() {
 
     expect(find.text('Retur'), findsOneWidget);
     expect(find.text('Belum dibayar'), findsNothing);
-    expect(find.text('-Rp 30.000'), findsWidgets);
+    expect(find.bySemanticsLabel('\u2212Rp 30.000'), findsWidgets);
   });
 
   group('input parsing', () {
