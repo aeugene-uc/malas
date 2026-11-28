@@ -41,3 +41,8 @@ test("namesEverySlangAmountCodeReadsAndTheRuleForMoneyReceivedFromSomeone", () =
   assert.match(VOICE_SYSTEM_PROMPT, /"goban buat bensin" the amountText is "goban"/);
   assert.match(VOICE_SYSTEM_PROMPT, /sewa kamar dari Mas Andi 800 ribu" is rent the owner received/);
 });
+
+test("tellsTheModelThatAShopOrSupplierCountsAsPerson", () => {
+  assert.match(VOICE_SYSTEM_PROMPT, /a person, shop or supplier named for the line/);
+  assert.match(VOICE_SYSTEM_PROMPT, /"di Toko Makmur" gives "Toko Makmur"/);
+});
