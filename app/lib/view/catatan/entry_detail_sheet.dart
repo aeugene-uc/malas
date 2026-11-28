@@ -30,10 +30,37 @@ Future<void> showEntryDetail(
     clipBehavior: Clip.antiAlias,
     builder: (sheetContext) => ChangeNotifierProvider.value(
       value: viewModel,
-      child: _EntryDetail(transaction: transaction),
+      child: _EntryDetail(transaction: transaction, isInSheet: true),
     ),
   );
   if (choice == null || !context.mounted) return;
+  await _openDraftFor(context, transaction, choice);
+}
+
+/// The same details as the sheet, standing beside the list on a wide
+/// screen (Figma C6), so its buttons act in place instead of closing.
+class EntryDetailPane extends StatelessWidget {
+  const EntryDetailPane({super.key, required this.transaction});
+
+  final Transaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EntryDetail(
+      key: ValueKey(transaction.id),
+      transaction: transaction,
+      isInSheet: false,
+    );
+  }
+}
+
+/// Ubah, Ulangi or Retur: fetches what the draft needs and opens it.
+Future<void> _openDraftFor(
+  BuildContext context,
+  Transaction transaction,
+  _DraftChoice choice,
+) async {
+  final viewModel = context.read<CatatanViewModel>();
   final messenger = ScaffoldMessenger.of(context);
   if (choice == _DraftChoice.ubah) {
     final businessToday = await viewModel.fetchBusinessToday();
@@ -71,9 +98,24 @@ Future<void> showEntryDetail(
 }
 
 class _EntryDetail extends StatelessWidget {
-  const _EntryDetail({required this.transaction});
+  const _EntryDetail({
+    super.key,
+    required this.transaction,
+    required this.isInSheet,
+  });
 
   final Transaction transaction;
+
+  /// In the sheet a choice closes it first; in the side pane it acts here.
+  final bool isInSheet;
+
+  void _choose(BuildContext context, _DraftChoice choice) {
+    if (isInSheet) {
+      Navigator.of(context).pop(choice);
+    } else {
+      _openDraftFor(context, transaction, choice);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +127,7 @@ class _EntryDetail extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _CategoryBand(tone: tone, icon: icon),
+          _CategoryBand(tone: tone, icon: icon, hasHandle: isInSheet),
           Padding(
             padding: EdgeInsets.fromLTRB(
               MalasSpace.screen,
@@ -129,8 +171,7 @@ class _EntryDetail extends StatelessWidget {
                 const SizedBox(height: MalasSpace.s20),
                 LipButton(
                   label: 'Ubah',
-                  onPressed: () =>
-                      Navigator.of(context).pop(_DraftChoice.ubah),
+                  onPressed: () => _choose(context, _DraftChoice.ubah),
                 ),
                 const SizedBox(height: MalasSpace.s12),
                 Row(
@@ -141,7 +182,7 @@ class _EntryDetail extends StatelessWidget {
                         variant: LipVariant.secondary,
                         isSmall: true,
                         onPressed: () =>
-                            Navigator.of(context).pop(_DraftChoice.ulangi),
+                            _choose(context, _DraftChoice.ulangi),
                       ),
                     ),
                     if (_isReturnable(transaction)) ...[
@@ -152,7 +193,7 @@ class _EntryDetail extends StatelessWidget {
                           variant: LipVariant.secondary,
                           isSmall: true,
                           onPressed: () =>
-                              Navigator.of(context).pop(_DraftChoice.retur),
+                              _choose(context, _DraftChoice.retur),
                         ),
                       ),
                     ],
@@ -240,7 +281,7 @@ class _EntryDetail extends StatelessWidget {
   Future<void> _delete(BuildContext context) async {
     final viewModel = context.read<CatatanViewModel>();
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    if (isInSheet) Navigator.of(context).pop();
     await deleteWithUndo(
       viewModel: viewModel,
       messenger: messenger,
@@ -252,10 +293,17 @@ class _EntryDetail extends StatelessWidget {
 /// DESIGN.md §5.3: 140px band in the category's soft tone, base wave, white
 /// ground wave, bubbles in the upper-right, handle, and 72px tile at (20, 70).
 class _CategoryBand extends StatelessWidget {
-  const _CategoryBand({required this.tone, required this.icon});
+  const _CategoryBand({
+    required this.tone,
+    required this.icon,
+    required this.hasHandle,
+  });
 
   final CategoryTone tone;
   final IconData icon;
+
+  /// Only a sheet can be dragged down.
+  final bool hasHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -268,21 +316,22 @@ class _CategoryBand extends StatelessWidget {
               child: CustomPaint(painter: _CategoryBandPainter(tone: tone)),
             ),
           ),
-          Positioned(
-            top: MalasSpace.s12,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: _handleWidth,
-                height: _handleHeight,
-                decoration: BoxDecoration(
-                  color: MalasColors.bgSurface,
-                  borderRadius: BorderRadius.circular(MalasRadius.xs),
+          if (hasHandle)
+            Positioned(
+              top: MalasSpace.s12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: _handleWidth,
+                  height: _handleHeight,
+                  decoration: BoxDecoration(
+                    color: MalasColors.bgSurface,
+                    borderRadius: BorderRadius.circular(MalasRadius.xs),
+                  ),
                 ),
               ),
             ),
-          ),
           Positioned(
             left: MalasSpace.screen,
             top: _tileTop,
@@ -530,21 +579,25 @@ class _DetailRow extends StatelessWidget {
           horizontal: MalasSpace.s16,
           vertical: MalasSpace.s12,
         ),
-        child: Row(
-          children: [
-            Text(label, style: MalasText.bodySecondary),
-            const SizedBox(width: MalasSpace.s12),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
+        // The amount takes what it needs, up to two thirds, and the label
+        // wraps in the rest, so neither runs off a narrow pane.
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              Expanded(child: Text(label, style: MalasText.bodySecondary)),
+              const SizedBox(width: MalasSpace.s12),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 2 / 3,
+                ),
                 child: DefaultTextStyle.merge(
                   style: MalasText.bodyStrong,
                   textAlign: TextAlign.end,
                   child: value,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

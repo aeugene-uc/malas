@@ -95,121 +95,153 @@ class _CatatanScreenState extends State<_CatatanScreen> {
         !filter.isUnpaidOnly &&
         filter.focus == null;
 
-    return Scaffold(
-      body: NotificationListener<ScrollEndNotification>(
-        onNotification: (notification) {
-          if (notification.metrics.extentAfter < 200) viewModel.loadMore();
-          return false;
-        },
-        child: RefreshIndicator(
-          onRefresh: viewModel.load,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: BrandHeader(
-                  title: 'Catatan',
-                  subtitle: _formatMonthYear(subtitleDate),
-                  actions: [
-                    if (canPop)
-                      IconButton(
-                        tooltip: 'Tutup',
-                        color: MalasColors.textOnBrand,
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(MalasIcons.x),
-                      ),
-                  ],
-                  controls: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _SearchField(
-                        controller: _searchController,
-                        onSearch: viewModel.search,
-                      ),
-                      const SizedBox(height: MalasSpace.s12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            if (filter.focus case final focus?) ...[
-                              _OnBrandFilterChip(
-                                label: focus.name,
-                                isSelected: true,
-                                trailingIcon: MalasIcons.x,
-                                semanticLabel: 'Hapus filter ${focus.name}',
-                                onPressed: viewModel.clearFocus,
-                              ),
-                              const SizedBox(width: MalasSpace.s8),
-                            ],
+    final list = NotificationListener<ScrollEndNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.extentAfter < 200) viewModel.loadMore();
+        return false;
+      },
+      child: RefreshIndicator(
+        onRefresh: viewModel.load,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: BrandHeader(
+                title: 'Catatan',
+                subtitle: _formatMonthYear(subtitleDate),
+                actions: [
+                  if (canPop)
+                    IconButton(
+                      tooltip: 'Tutup',
+                      color: MalasColors.textOnBrand,
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(MalasIcons.x),
+                    ),
+                ],
+                controls: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SearchField(
+                      controller: _searchController,
+                      onSearch: viewModel.search,
+                    ),
+                    const SizedBox(height: MalasSpace.s12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (filter.focus case final focus?) ...[
                             _OnBrandFilterChip(
-                              label: 'Semua',
-                              isSelected: isShowingAll,
-                              onPressed: () => _clearAllFilters(viewModel),
+                              label: focus.name,
+                              isSelected: true,
+                              trailingIcon: MalasIcons.x,
+                              semanticLabel: 'Hapus filter ${focus.name}',
+                              onPressed: viewModel.clearFocus,
                             ),
                             const SizedBox(width: MalasSpace.s8),
-                            for (final (direction, label) in const [
-                              (Direction.masuk, 'Masuk'),
-                              (Direction.keluar, 'Keluar'),
-                            ]) ...[
-                              _OnBrandFilterChip(
-                                label: label,
-                                isSelected: filter.direction == direction,
-                                onPressed: () =>
-                                    viewModel.toggleDirection(direction),
-                              ),
-                              const SizedBox(width: MalasSpace.s8),
-                            ],
-                            _OnBrandFilterChip(
-                              label: 'Belum lunas',
-                              isSelected: filter.isUnpaidOnly,
-                              onPressed: viewModel.toggleUnpaidOnly,
-                            ),
                           ],
-                        ),
+                          _OnBrandFilterChip(
+                            label: 'Semua',
+                            isSelected: isShowingAll,
+                            onPressed: () => _clearAllFilters(viewModel),
+                          ),
+                          const SizedBox(width: MalasSpace.s8),
+                          for (final (direction, label) in const [
+                            (Direction.masuk, 'Masuk'),
+                            (Direction.keluar, 'Keluar'),
+                          ]) ...[
+                            _OnBrandFilterChip(
+                              label: label,
+                              isSelected: filter.direction == direction,
+                              onPressed: () =>
+                                  viewModel.toggleDirection(direction),
+                            ),
+                            const SizedBox(width: MalasSpace.s8),
+                          ],
+                          _OnBrandFilterChip(
+                            label: 'Belum lunas',
+                            isSelected: filter.isUnpaidOnly,
+                            onPressed: viewModel.toggleUnpaidOnly,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  MalasSpace.screen,
-                  MalasSpace.s8,
-                  MalasSpace.screen,
-                  MalasSpace.s24,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      LipButton(
-                        label: 'Piutang/Utang',
-                        icon: MalasIcons.usersThreeFill,
-                        variant: LipVariant.secondary,
-                        isSmall: true,
-                        onPressed: () => Navigator.of(
-                          context,
-                        ).push(PiutangUtangView.route()),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                MalasSpace.screen,
+                MalasSpace.s8,
+                MalasSpace.screen,
+                MalasSpace.s24,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    LipButton(
+                      label: 'Piutang/Utang',
+                      icon: MalasIcons.usersThreeFill,
+                      variant: LipVariant.secondary,
+                      isSmall: true,
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).push(PiutangUtangView.route()),
+                    ),
+                    if (viewModel.errorMessage case final message?
+                        when viewModel.transactions.isNotEmpty) ...[
+                      const SizedBox(height: MalasSpace.s12),
+                      _ReloadErrorBanner(
+                        message: message,
+                        onRetry: viewModel.load,
                       ),
-                      if (viewModel.errorMessage case final message?
-                          when viewModel.transactions.isNotEmpty) ...[
-                        const SizedBox(height: MalasSpace.s12),
-                        _ReloadErrorBanner(
-                          message: message,
-                          onRetry: viewModel.load,
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
-              _EntrySliver(viewModel: viewModel),
-            ],
-          ),
+            ),
+            _EntrySliver(viewModel: viewModel),
+          ],
         ),
       ),
     );
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    if (screenWidth < twoPaneMinWidth) return Scaffold(body: list);
+    final selected = viewModel.selectedTransaction;
+    return Scaffold(
+      body: Row(
+        children: [
+          SizedBox(
+            width: listWidthFor(screenWidth),
+            child: list,
+          ),
+          const VerticalDivider(
+            width: MalasSize.cardStroke,
+            thickness: MalasSize.cardStroke,
+            color: MalasColors.borderCard,
+          ),
+          Expanded(
+            child: selected == null
+                ? const SizedBox.shrink()
+                : SafeArea(child: EntryDetailPane(transaction: selected)),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+/// From this width (tablet, open Fold) Catatan shows the list and the
+/// picked entry side by side (Figma C6) instead of a sheet.
+const double twoPaneMinWidth = 600;
+
+/// The list's width: the whole screen on a phone, half of it beside the
+/// details, kept between a phone's width and a comfortable reading width.
+double listWidthFor(double screenWidth) {
+  if (screenWidth < twoPaneMinWidth) return screenWidth;
+  return (screenWidth / 2).clamp(360, 420);
 }
 
 class _SearchField extends StatelessWidget {
@@ -414,7 +446,8 @@ class _EntrySliver extends StatelessWidget {
     final now = DateTime.now();
     final todayIso = _isoDate(now);
     final yesterdayIso = _isoDate(DateTime(now.year, now.month, now.day - 1));
-    final isCompactWidth = MediaQuery.sizeOf(context).width < _compactWidth;
+    final isCompactWidth =
+        listWidthFor(MediaQuery.sizeOf(context).width) < _compactWidth;
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(
         MalasSpace.screen,
@@ -505,6 +538,13 @@ class _DismissibleEntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isTwoPane = MediaQuery.sizeOf(context).width >= twoPaneMinWidth;
+    final isSelected =
+        isTwoPane &&
+        context.select<CatatanViewModel, String?>(
+              (viewModel) => viewModel.selectedTransaction?.id,
+            ) ==
+            entry.id;
     return Dismissible(
       key: ValueKey(entry.id),
       direction: DismissDirection.endToStart,
@@ -519,9 +559,14 @@ class _DismissibleEntryRow extends StatelessWidget {
         messenger: ScaffoldMessenger.of(context),
         transaction: entry,
       ),
-      child: EntryRowFor(
-        entry: entry,
-        onTap: () => showEntryDetail(context, entry),
+      child: ColoredBox(
+        color: isSelected ? MalasColors.bgSelected : Colors.transparent,
+        child: EntryRowFor(
+          entry: entry,
+          onTap: isTwoPane
+              ? () => context.read<CatatanViewModel>().select(entry)
+              : () => showEntryDetail(context, entry),
+        ),
       ),
     );
   }
