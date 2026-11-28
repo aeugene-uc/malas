@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -49,16 +51,8 @@ class _NavBar extends StatelessWidget {
         onTap: () => viewModel.selectTab(tab),
       ),
     );
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: MalasColors.bgSurface,
-        border: Border(
-          top: BorderSide(
-            color: MalasColors.borderCard,
-            width: MalasSize.cardStroke,
-          ),
-        ),
-      ),
+    return CustomPaint(
+      painter: const _NavEdgePainter(),
       child: SafeArea(
         top: false,
         child: SizedBox(
@@ -77,6 +71,61 @@ class _NavBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The mic's label height, fixed so the bump knows where the mic sits.
+const double _micLabelHeight = 16;
+
+/// The bar's surface and top line, with the line bending up around the mic
+/// instead of cutting across it.
+class _NavEdgePainter extends CustomPainter {
+  const _NavEdgePainter();
+
+  /// Room between the mic and the curve around it.
+  static const double _bumpGap = 6;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final barHeight = MalasSize.navBar - 4;
+    // Where the mic's circle centre sits below the bar's top edge.
+    final micCentreY =
+        barHeight -
+        MalasSpace.s8 -
+        _micLabelHeight -
+        MalasSize.lip -
+        MalasSize.navMic / 2;
+    final radius = MalasSize.navMic / 2 + _bumpGap;
+    final centre = Offset(size.width / 2, micCentreY);
+    final halfGap = math.sqrt(radius * radius - micCentreY * micCentreY);
+    final startAngle = math.atan2(-micCentreY, -halfGap);
+    final endAngle = math.atan2(-micCentreY, halfGap);
+
+    final edge = Path()
+      ..moveTo(0, 0)
+      ..lineTo(centre.dx - halfGap, 0)
+      ..arcTo(
+        Rect.fromCircle(center: centre, radius: radius),
+        startAngle,
+        endAngle - startAngle,
+        false,
+      )
+      ..lineTo(size.width, 0);
+    final surface = Path.from(edge)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(surface, Paint()..color = MalasColors.bgSurface);
+    canvas.drawPath(
+      edge,
+      Paint()
+        ..color = MalasColors.borderCard
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = MalasSize.cardStroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_NavEdgePainter oldDelegate) => false;
 }
 
 class _NavTab extends StatelessWidget {
@@ -267,7 +316,10 @@ class _NavMicState extends State<_NavMic> with SingleTickerProviderStateMixin {
                     ),
                   ),
                 ),
-                Text('Bicara', style: MalasText.labelNav),
+                SizedBox(
+                  height: _micLabelHeight,
+                  child: Text('Bicara', style: MalasText.labelNav),
+                ),
               ],
             ),
           ),
@@ -325,14 +377,11 @@ class _CaptureMenu {
   }
 }
 
-/// One menu button's height, label included, for where it flies out from.
-const double _optionHeight = MalasSize.navMic + 32;
+/// How far below its place each button starts its slide up.
+const double _slideRise = 48;
 
-/// How far Foto and Ketik sit to each side of the mic.
-const double _optionSideReach = 48 + (MalasSize.navMic + 8) / 2;
-
-/// §4.1 A3: three round buttons fan out of the mic over the scrim, one
-/// after another, and the mic becomes Tutup.
+/// §4.1 A3: three round buttons slide up over the scrim, left to right,
+/// and the mic becomes Tutup.
 class _CaptureMenuLayer extends StatelessWidget {
   const _CaptureMenuLayer({
     required this.menu,
@@ -368,7 +417,7 @@ class _CaptureMenuLayer extends StatelessWidget {
       required IconData icon,
       required CategoryTone? tone,
       required double startsAt,
-      required Offset fromMic,
+      required bool isSliding,
     }) {
       // Keyed outside the fly-in, so the finger is matched against where a
       // button lands, not against the mic it is still flying out of.
@@ -377,7 +426,7 @@ class _CaptureMenuLayer extends StatelessWidget {
         child: _FanIn(
           animation: animation,
           startsAt: startsAt,
-          from: fromMic,
+          rise: isSliding ? _slideRise : 0,
           child: ValueListenableBuilder(
             valueListenable: menu.hovered,
             builder: (_, hovered, _) => _CaptureOption(
@@ -408,7 +457,7 @@ class _CaptureMenuLayer extends StatelessWidget {
                   icon: MalasIcons.microphoneFill,
                   tone: CategoryTone.penjualan,
                   startsAt: 0.2,
-                  fromMic: const Offset(0, 2 * _optionHeight + 8),
+                  isSliding: true,
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -419,10 +468,7 @@ class _CaptureMenuLayer extends StatelessWidget {
                       icon: MalasIcons.cameraFill,
                       tone: CategoryTone.minuman,
                       startsAt: 0,
-                      fromMic: const Offset(
-                        _optionSideReach,
-                        _optionHeight + 8,
-                      ),
+                      isSliding: true,
                     ),
                     const SizedBox(width: 96),
                     option(
@@ -431,10 +477,7 @@ class _CaptureMenuLayer extends StatelessWidget {
                       icon: MalasIcons.keyboardFill,
                       tone: CategoryTone.bahan,
                       startsAt: 0.4,
-                      fromMic: const Offset(
-                        -_optionSideReach,
-                        _optionHeight + 8,
-                      ),
+                      isSliding: true,
                     ),
                   ],
                 ),
@@ -445,7 +488,7 @@ class _CaptureMenuLayer extends StatelessWidget {
                   icon: MalasIcons.x,
                   tone: null,
                   startsAt: 0,
-                  fromMic: Offset.zero,
+                  isSliding: false,
                 ),
               ],
             ),
@@ -456,21 +499,24 @@ class _CaptureMenuLayer extends StatelessWidget {
   }
 }
 
-/// A menu button flying out of the mic: it starts at [startsAt] of the open
-/// animation, grows from small and overshoots a little into place.
+/// A menu button sliding up into place with a bounce. Each starts at its own
+/// [startsAt] of the open animation, so they come out left to right.
+/// An ease-out that overshoots its place by about a tenth and settles back.
+const Cubic _bounce = Cubic(0.34, 1.56, 0.64, 1);
+
 class _FanIn extends StatelessWidget {
   const _FanIn({
     required this.animation,
     required this.startsAt,
-    required this.from,
+    required this.rise,
     required this.child,
   });
 
   final Animation<double> animation;
   final double startsAt;
 
-  /// Where the mic is, measured from the button's own place.
-  final Offset from;
+  /// How far below its place it starts.
+  final double rise;
   final Widget child;
 
   @override
@@ -483,12 +529,12 @@ class _FanIn extends StatelessWidget {
           startsAt,
           startsAt + 0.6,
         ).transform(animation.value);
-        final travelled = Curves.easeOutBack.transform(progress);
+        final travelled = _bounce.transform(progress);
         return Opacity(
           opacity: progress,
           child: Transform.translate(
-            offset: from * (1 - travelled),
-            child: Transform.scale(scale: 0.4 + 0.6 * travelled, child: child),
+            offset: Offset(0, rise * (1 - travelled)),
+            child: Transform.scale(scale: 0.8 + 0.2 * travelled, child: child),
           ),
         );
       },

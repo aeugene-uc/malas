@@ -59,6 +59,30 @@ void main() {
     expect(find.byType(KetikView), findsOneWidget);
   });
 
+  testWidgets('theButtonsComeOutLeftToRight', (tester) async {
+    await _openSignedIn(tester);
+    double opacityOf(String label) => tester
+        .widget<Opacity>(
+          find.ancestor(of: find.text(label), matching: find.byType(Opacity)),
+        )
+        .opacity;
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byTooltip('Bicara')),
+    );
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    // A quarter of the way in: Foto is coming, Bicara and Ketik wait.
+    await tester.pump(const Duration(milliseconds: 105));
+
+    expect(opacityOf('Foto'), greaterThan(0));
+    expect(opacityOf('Bicara'), greaterThan(0));
+    expect(opacityOf('Foto'), greaterThan(opacityOf('Bicara')));
+    expect(opacityOf('Ketik'), 0);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('backClosesTheButtonsAndStaysInTheApp', (tester) async {
     await _openSignedIn(tester);
     final gesture = await _holdMic(tester);
