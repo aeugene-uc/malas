@@ -7,6 +7,7 @@ import 'package:malas/view/app_shell.dart';
 import 'package:malas/view/first_run/first_run_view.dart';
 import 'package:malas/view/first_run/sign_in_view.dart';
 import 'package:malas/view/first_run/trial_sheet.dart';
+import 'package:malas/view/theme/lip.dart';
 
 void main() {
   testWidgets('daftarThenFirstRunSetupOpensBeranda', (tester) async {
@@ -25,7 +26,7 @@ void main() {
     await tester.enterText(_field('Nama'), 'Pak Budi');
     await tester.enterText(_field('Nomor HP'), '081298765432');
     await tester.enterText(_field('Kata sandi'), 'rahasia');
-    await tester.tap(find.widgetWithText(FilledButton, 'Daftar'));
+    await tester.tap(find.widgetWithText(LipButton, 'Daftar'));
     await tester.pumpAndSettle();
     expect(find.byType(FirstRunView), findsOneWidget);
     expect(find.text(consentLine), findsOneWidget);
@@ -48,6 +49,8 @@ void main() {
     await _setUpANewStore(tester);
     expect(find.text('Catat penjualan pertama'), findsOneWidget);
 
+    await tester.longPress(find.bySemanticsLabel('Bicara').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ketik'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '30000');
@@ -84,7 +87,7 @@ void main() {
 
     await tester.enterText(_field('Nomor HP'), '081234567890');
     await tester.enterText(_field('Kata sandi'), 'rahasia');
-    await tester.tap(find.widgetWithText(FilledButton, 'Masuk'));
+    await tester.tap(find.widgetWithText(LipButton, 'Masuk'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AppShell), findsOneWidget);
@@ -111,7 +114,7 @@ void main() {
       );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      expect(find.text('Rp 25.000/bulan'), findsOneWidget);
+      expect(find.bySemanticsLabel('Rp 25.000/bulan'), findsOneWidget);
 
       await tester.tap(find.text(buttonLabel));
       await tester.pumpAndSettle();
@@ -138,7 +141,7 @@ Future<void> _setUpANewStore(WidgetTester tester) async {
   await tester.enterText(_field('Nama'), 'Pak Budi');
   await tester.enterText(_field('Nomor HP'), '081298765432');
   await tester.enterText(_field('Kata sandi'), 'rahasia');
-  await tester.tap(find.widgetWithText(FilledButton, 'Daftar'));
+  await tester.tap(find.widgetWithText(LipButton, 'Daftar'));
   await tester.pumpAndSettle();
   await tester.enterText(_field('Nama usaha'), 'Warung Pak Budi');
   await tester.tap(find.text('Makanan & minuman'));

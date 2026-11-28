@@ -9,6 +9,8 @@ import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/data/store_repository.dart';
 import 'package:malas/data/unsent_drafts_store.dart';
 import 'package:malas/view/ketik/ketik_view.dart';
+import 'package:malas/view/theme/lip.dart';
+import 'package:malas/view/theme/parts.dart';
 import 'package:provider/provider.dart';
 
 import '../support/signal_adapter.dart';
@@ -51,9 +53,11 @@ void main() {
     await tester.tap(find.text('ketik'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ChoiceChip, 'Penjualan'), findsOneWidget);
+    expect(find.widgetWithText(SelectChip, 'Penjualan'), findsOneWidget);
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester
+          .widget<LipButton>(find.widgetWithText(LipButton, 'Simpan'))
+          .onPressed,
       isNull,
     );
 
@@ -107,13 +111,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Tidak ada koneksi'), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.widgetWithText(SelectChip, 'Penjualan'), findsNothing);
 
     adapter.isOffline = false;
     await tester.tap(find.text('Coba lagi'));
     await tester.pumpAndSettle();
 
     expect(find.text('Tidak ada koneksi'), findsNothing);
-    expect(find.widgetWithText(ChoiceChip, 'Penjualan'), findsOneWidget);
+    expect(find.widgetWithText(SelectChip, 'Penjualan'), findsOneWidget);
   });
 }

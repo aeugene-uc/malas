@@ -7,15 +7,18 @@ import '../../model/transaction.dart';
 import '../../viewmodel/catatan_view_model.dart';
 import '../draft/draft_view.dart';
 import '../format.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/parts.dart';
+import '../theme/tokens.dart';
 import 'catatan_view.dart';
 
 /// What closes the sheet to open the draft screen.
 enum _DraftChoice { ubah, ulangi, retur }
 
-/// One entry's lines and payments (§5.3: details behind a tap), with Ubah,
-/// Ulangi, Retur and Hapus. Ubah, Ulangi and Retur close the sheet with their
-/// choice, and the draft opens on Catatan, since the sheet's context goes
-/// with it.
+/// One entry's lines and payments (§5.3, DESIGN.md F2), with Ubah, Ulangi,
+/// Retur and Hapus. Ubah, Ulangi and Retur close the sheet with their choice,
+/// and the draft opens on Catatan, since the sheet's context goes with it.
 Future<void> showEntryDetail(
   BuildContext context,
   Transaction transaction,
@@ -24,6 +27,7 @@ Future<void> showEntryDetail(
   final choice = await showModalBottomSheet<_DraftChoice>(
     context: context,
     isScrollControlled: true,
+    clipBehavior: Clip.antiAlias,
     builder: (sheetContext) => ChangeNotifierProvider.value(
       value: viewModel,
       child: _EntryDetail(transaction: transaction),
@@ -73,100 +77,100 @@ class _EntryDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              formatEntryDate(transaction.businessDate),
-              style: textTheme.titleMedium,
+    final (tone, icon) = toneFor(transaction);
+    final title = _entryTitle(transaction);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CategoryBand(tone: tone, icon: icon),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s20 + bottomInset,
             ),
-            if (transaction.person case final person?) Text(person.name),
-            if (transaction.editCount > 0)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                  onPressed: () => _showHistory(context),
-                  child: Text('Diubah ${transaction.editCount}x'),
-                ),
-              ),
-            const SizedBox(height: 16),
-            for (final line in transaction.lines)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: Text(_lineName(line))),
-                    Text(formatRupiah(line.lineTotal)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: MalasText.titleScreen,
+                          ),
+                          const SizedBox(height: MalasSpace.s4),
+                          Text(
+                            _formatDetailDate(transaction.businessDate),
+                            style: MalasText.bodySecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: MalasSpace.s12),
+                    MoneyText.forEntry(transaction, size: MoneySize.large),
                   ],
                 ),
-              ),
-            const Divider(height: 24),
-            _AmountRow(label: 'Total', amount: transaction.total),
-            _AmountRow(label: 'Dibayar', amount: transaction.paid),
-            if (transaction.isKembalikan)
-              _AmountRow(label: 'Kembalikan', amount: -transaction.remaining)
-            else if (!transaction.isFullyPaid)
-              _AmountRow(label: 'Sisa', amount: transaction.remaining),
-            if (transaction.dueDate case final dueDate?)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('Jatuh tempo ${formatEntryDate(dueDate)}'),
-              ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
-              onPressed: () => Navigator.of(context).pop(_DraftChoice.ubah),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Ubah'),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 48),
-                    ),
-                    onPressed: () =>
-                        Navigator.of(context).pop(_DraftChoice.ulangi),
-                    icon: const Icon(Icons.replay),
-                    label: const Text('Ulangi'),
-                  ),
+                const SizedBox(height: MalasSpace.s20),
+                _DetailsCard(
+                  transaction: transaction,
+                  onShowHistory: () => _showHistory(context),
                 ),
-                if (_isReturnable(transaction)) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 48),
+                const SizedBox(height: MalasSpace.s20),
+                LipButton(
+                  label: 'Ubah',
+                  onPressed: () =>
+                      Navigator.of(context).pop(_DraftChoice.ubah),
+                ),
+                const SizedBox(height: MalasSpace.s12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: LipButton(
+                        label: 'Ulangi',
+                        variant: LipVariant.secondary,
+                        isSmall: true,
+                        onPressed: () =>
+                            Navigator.of(context).pop(_DraftChoice.ulangi),
                       ),
-                      onPressed: () =>
-                          Navigator.of(context).pop(_DraftChoice.retur),
-                      icon: const Icon(Icons.undo),
-                      label: const Text('Retur'),
                     ),
-                  ),
-                ],
+                    if (_isReturnable(transaction)) ...[
+                      const SizedBox(width: MalasSpace.s8),
+                      Expanded(
+                        child: LipButton(
+                          label: 'Retur',
+                          variant: LipVariant.secondary,
+                          isSmall: true,
+                          onPressed: () =>
+                              Navigator.of(context).pop(_DraftChoice.retur),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: MalasSpace.s8),
+                    Expanded(
+                      child: LipButton(
+                        label: 'Hapus',
+                        variant: LipVariant.danger,
+                        isSmall: true,
+                        onPressed: () => _delete(context),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-                minimumSize: const Size(0, 48),
-              ),
-              onPressed: () => _delete(context),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Hapus'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -183,16 +187,49 @@ class _EntryDetail extends StatelessWidget {
     await showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final record in history)
-              ListTile(
-                title: Text(formatRupiah(record.previousTotal)),
-                subtitle: Text(formatEntryDate(record.previousBusinessDate)),
-                trailing: Text(_formatEditTime(record.at)),
+        child: Padding(
+          padding: const EdgeInsets.only(
+            top: MalasSpace.s12,
+            bottom: MalasSpace.s20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: _handleWidth,
+                  height: _handleHeight,
+                  decoration: BoxDecoration(
+                    color: MalasColors.borderCard,
+                    borderRadius: BorderRadius.circular(MalasRadius.xs),
+                  ),
+                ),
               ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  MalasSpace.screen,
+                  MalasSpace.s16,
+                  MalasSpace.screen,
+                  MalasSpace.s8,
+                ),
+                child: Text('Riwayat', style: MalasText.titleSection),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: MalasSpace.screen,
+                  ),
+                  child: RowsCard(
+                    rows: [
+                      for (final record in history)
+                        _HistoryRow(record: record),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -212,24 +249,345 @@ class _EntryDetail extends StatelessWidget {
   }
 }
 
-class _AmountRow extends StatelessWidget {
-  const _AmountRow({required this.label, required this.amount});
+/// DESIGN.md §5.3: 140px band in the category's soft tone, base wave, white
+/// ground wave, bubbles in the upper-right, handle, and 72px tile at (20, 70).
+class _CategoryBand extends StatelessWidget {
+  const _CategoryBand({required this.tone, required this.icon});
 
-  final String label;
-  final int amount;
+  final CategoryTone tone;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
+    return SizedBox(
+      height: _tileTop + _largeTileSize,
+      child: Stack(
         children: [
-          Expanded(child: Text(label)),
-          Text(formatRupiah(amount)),
+          Positioned.fill(
+            child: ExcludeSemantics(
+              child: CustomPaint(painter: _CategoryBandPainter(tone: tone)),
+            ),
+          ),
+          Positioned(
+            top: MalasSpace.s12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: _handleWidth,
+                height: _handleHeight,
+                decoration: BoxDecoration(
+                  color: MalasColors.bgSurface,
+                  borderRadius: BorderRadius.circular(MalasRadius.xs),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: MalasSpace.screen,
+            top: _tileTop,
+            child: Container(
+              width: _largeTileSize,
+              height: _largeTileSize,
+              decoration: BoxDecoration(
+                color: tone.base,
+                borderRadius: BorderRadius.circular(MalasRadius.largeTile),
+                border: Border.all(
+                  color: MalasColors.bgSurface,
+                  width: MalasSize.lip,
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: _largeTileIconSize,
+                color: MalasColors.iconOnInk,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class _CategoryBandPainter extends CustomPainter {
+  const _CategoryBandPainter({required this.tone});
+
+  final CategoryTone tone;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / 360;
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, _bandHeight),
+      Paint()..color = tone.soft,
+    );
+
+    // Upper-right solid bubbles (6-26px diameter) mixing white and base tone.
+    void bubble(double cx, double cy, double diameter, Color color) {
+      canvas.drawCircle(
+        Offset(cx * sx, cy),
+        diameter / 2,
+        Paint()..color = color,
+      );
+    }
+
+    bubble(128, 30, 6, tone.base);
+    bubble(150, 52, 14, MalasColors.bgSurface);
+    bubble(216, 86, 8, tone.base);
+    bubble(250, 38, 18, MalasColors.bgSurface);
+    bubble(312, 28, 26, tone.base);
+
+    // Base wave starting around y = 96.
+    final baseWave = Path()
+      ..moveTo(0, 100)
+      ..cubicTo(90 * sx, 82, 170 * sx, 114, 245 * sx, 96)
+      ..cubicTo(295 * sx, 86, 330 * sx, 102, size.width, 94)
+      ..lineTo(size.width, _bandHeight)
+      ..lineTo(0, _bandHeight)
+      ..close();
+    canvas.drawPath(baseWave, Paint()..color = tone.base);
+
+    // Ground wave in bg/surface starting around y = 122.
+    final groundWave = Path()
+      ..moveTo(0, 124)
+      ..cubicTo(95 * sx, 112, 180 * sx, 134, 260 * sx, 120)
+      ..cubicTo(310 * sx, 112, 340 * sx, 124, size.width, 118)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(groundWave, Paint()..color = MalasColors.bgSurface);
+  }
+
+  @override
+  bool shouldRepaint(_CategoryBandPainter oldDelegate) =>
+      oldDelegate.tone != tone;
+}
+
+/// DESIGN.md §3 flat details card: 52px label/value rows separated by 2px
+/// dividers.
+class _DetailsCard extends StatelessWidget {
+  const _DetailsCard({required this.transaction, required this.onShowHistory});
+
+  final Transaction transaction;
+  final VoidCallback onShowHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[
+      ..._buildLineRows(transaction),
+      if (transaction.person case final person?)
+        _DetailRow(label: 'Orang', value: Text(person.name)),
+      if (transaction.isKembalikan) ...[
+        _DetailRow(label: 'Dibayar', value: _amountText(transaction.paid)),
+        _DetailRow(
+          label: 'Kembalikan',
+          value: _amountText(-transaction.remaining),
+        ),
+      ] else if (!transaction.isFullyPaid) ...[
+        _DetailRow(label: 'Dibayar', value: _amountText(transaction.paid)),
+        _DetailRow(label: 'Sisa', value: _amountText(transaction.remaining)),
+      ] else
+        const _DetailRow(
+          label: 'Dibayar',
+          value: TagChip('Lunas', tone: TagTone.lunas),
+        ),
+      if (transaction.dueDate case final dueDate?)
+        _DetailRow(label: 'Jatuh tempo', value: Text(formatEntryDate(dueDate))),
+      if (transaction.hasRetur)
+        const _DetailRow(label: 'Retur', value: TagChip('Ada retur')),
+      if (transaction.editCount > 0)
+        _DetailRow(
+          label: 'Riwayat',
+          onTap: onShowHistory,
+          value: Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: MalasSpace.s8,
+            runSpacing: MalasSpace.s4,
+            children: [
+              TagChip('Diubah ${transaction.editCount}x'),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Lihat',
+                    style: MalasText.labelChip.copyWith(
+                      color: MalasColors.textBrandDark,
+                    ),
+                  ),
+                  const SizedBox(width: MalasSpace.s4),
+                  const Icon(
+                    MalasIcons.caretRight,
+                    size: _rowIconSize,
+                    color: MalasColors.textBrandDark,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+    ];
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final (index, row) in rows.indexed) ...[
+            if (index > 0)
+              const Divider(
+                indent: MalasSpace.s16,
+                endIndent: MalasSpace.s16,
+              ),
+            row,
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildLineRows(Transaction transaction) {
+    final lines = transaction.lines;
+    if (lines.isEmpty) {
+      return [
+        _DetailRow(label: 'Jumlah', value: MoneyText.forEntry(transaction)),
+      ];
+    }
+    if (lines.length == 1) {
+      return [
+        _DetailRow(
+          label: 'Jumlah',
+          value: _buildSingleLineValue(lines.single),
+        ),
+      ];
+    }
+    return [
+      for (final line in lines)
+        _DetailRow(label: _lineName(line), value: _amountText(line.lineTotal)),
+      _DetailRow(label: 'Total', value: MoneyText.forEntry(transaction)),
+    ];
+  }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.record});
+
+  final EditRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: MalasSize.row),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: MalasSpace.s16,
+          vertical: MalasSpace.s12,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    formatEntryDate(record.previousBusinessDate),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: MalasText.titleItem,
+                  ),
+                  const SizedBox(height: MalasSpace.s4),
+                  Text(
+                    _formatEditTime(record.at),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: MalasText.bodySecondary,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: MalasSpace.s12),
+            _amountText(record.previousTotal),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value, this.onTap});
+
+  final String label;
+  final Widget value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _detailRowHeight),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: MalasSpace.s16,
+          vertical: MalasSpace.s12,
+        ),
+        child: Row(
+          children: [
+            Text(label, style: MalasText.bodySecondary),
+            const SizedBox(width: MalasSpace.s12),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: DefaultTextStyle.merge(
+                  style: MalasText.bodyStrong,
+                  textAlign: TextAlign.end,
+                  child: value,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (onTap == null) return content;
+    return InkWell(onTap: onTap, child: content);
+  }
+}
+
+String _entryTitle(Transaction entry) {
+  final names = [
+    for (final line in entry.lines) line.item?.name ?? line.category?.name ?? '',
+  ].where((name) => name.isNotEmpty);
+  if (names.isNotEmpty) return names.join(', ');
+  return entry.person?.name ?? 'Tanpa nama';
+}
+
+Widget _amountText(int amount) => MoneyText(
+  amount.abs(),
+  sign: amount < 0 ? MoneySign.keluar : MoneySign.neutral,
+);
+
+Widget _buildSingleLineValue(TransactionLine line) {
+  final quantity = line.quantity;
+  if (quantity == null) return _amountText(line.lineTotal);
+  final qtyText = [quantity, ?line.unit].join(' ');
+  final unitPrice = line.unitPrice;
+  return Wrap(
+    alignment: WrapAlignment.end,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: MalasSpace.s4,
+    children: [
+      Text(unitPrice != null ? '$qtyText ×' : '$qtyText ·'),
+      _amountText(unitPrice ?? line.lineTotal),
+    ],
+  );
+}
+
+/// DESIGN.md §8: "Rabu, 25 Nov" in detail.
+String _formatDetailDate(String businessDate) {
+  final date = DateTime.parse(businessDate);
+  final weekday = _weekdayFullNames[date.weekday - DateTime.monday];
+  final month = _monthShortNames[date.month - 1];
+  return '$weekday, ${date.day} $month';
 }
 
 /// A Retur takes back lines, so a bare amount or a Retur itself has none
@@ -253,3 +611,37 @@ String _formatEditTime(DateTime at) {
       '${local.minute.toString().padLeft(2, '0')}';
   return '$date $time';
 }
+
+const _weekdayFullNames = [
+  'Senin',
+  'Selasa',
+  'Rabu',
+  'Kamis',
+  'Jumat',
+  'Sabtu',
+  'Minggu',
+];
+
+const _monthShortNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+const _bandHeight = 140.0;
+const _tileTop = 70.0;
+const _largeTileSize = 72.0;
+const _largeTileIconSize = 32.0;
+const _handleWidth = 40.0;
+const _handleHeight = 5.0;
+const _detailRowHeight = 52.0;
+const _rowIconSize = 20.0;

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../viewmodel/session_view_model.dart';
 import '../app_shell.dart';
+import '../theme/lip.dart';
+import '../theme/tokens.dart';
 import 'first_run_view.dart';
 import 'sign_in_view.dart';
 import 'trial_sheet.dart';
@@ -16,7 +18,8 @@ class SessionGate extends StatelessWidget {
     final session = context.watch<SessionViewModel>();
     return switch (session.stage) {
       SessionStage.loading => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: MalasColors.bgBrand,
+        body: Center(child: _LoadingTitle()),
       ),
       SessionStage.failed => _StartFailed(
         message: session.errorMessage ?? '',
@@ -28,6 +31,18 @@ class SessionGate extends StatelessWidget {
         isTrialSheetDue: session.isTrialSheetDue,
       ),
     };
+  }
+}
+
+class _LoadingTitle extends StatelessWidget {
+  const _LoadingTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'MALAS',
+      style: MalasText.titleScreen.copyWith(color: MalasColors.textOnBrand),
+    );
   }
 }
 
@@ -70,13 +85,17 @@ class _StartFailed extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: onRetry, child: const Text('Coba lagi')),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(MalasSpace.screen),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(message, style: MalasText.body, textAlign: TextAlign.center),
+              const SizedBox(height: MalasSpace.s16),
+              LipButton(label: 'Coba lagi', onPressed: onRetry),
+            ],
+          ),
         ),
       ),
     );

@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import '../../data/auth_repository.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../../viewmodel/sign_in_view_model.dart';
+import '../theme/brand_header.dart';
+import '../theme/lip.dart';
+import '../theme/tokens.dart';
 
 class SignInView extends StatelessWidget {
   const SignInView({super.key});
@@ -43,56 +46,74 @@ class _SignInFormState extends State<_SignInForm> {
     final viewModel = context.watch<SignInViewModel>();
     final isDaftar = viewModel.mode == SignInMode.daftar;
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const SizedBox(height: 32),
-            Text('MALAS', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 32),
-            SegmentedButton<SignInMode>(
-              segments: const [
-                ButtonSegment(value: SignInMode.masuk, label: Text('Masuk')),
-                ButtonSegment(value: SignInMode.daftar, label: Text('Daftar')),
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          BrandHeader(
+            title: isDaftar ? 'Daftar' : 'Masuk',
+            subtitle: 'MALAS',
+            height: _formHeaderHeight,
+            // Non-empty actions suppresses coins so this form keeps hills only
+            // (DESIGN.md §5.4).
+            actions: const [SizedBox.shrink()],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s16,
+              MalasSpace.screen,
+              MalasSpace.s24,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (isDaftar) ...[
+                  TextField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.words,
+                    style: MalasText.body,
+                    decoration: const InputDecoration(labelText: 'Nama'),
+                  ),
+                  const SizedBox(height: MalasSpace.s16),
+                ],
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: MalasText.body,
+                  decoration: const InputDecoration(labelText: 'Nomor HP'),
+                ),
+                const SizedBox(height: MalasSpace.s16),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style: MalasText.body,
+                  decoration: const InputDecoration(labelText: 'Kata sandi'),
+                ),
+                if (viewModel.errorMessage case final message?) ...[
+                  const SizedBox(height: MalasSpace.s16),
+                  Text(
+                    message,
+                    style: MalasText.bodySecondary.copyWith(
+                      color: MalasColors.textError,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: MalasSpace.s24),
+                LipButton(
+                  label: isDaftar ? 'Daftar' : 'Masuk',
+                  onPressed: viewModel.isSubmitting ? null : _submit,
+                ),
+                const SizedBox(height: MalasSpace.s12),
+                TextButton(
+                  onPressed: () => viewModel.selectMode(
+                    isDaftar ? SignInMode.masuk : SignInMode.daftar,
+                  ),
+                  child: Text(isDaftar ? 'Masuk' : 'Daftar'),
+                ),
               ],
-              selected: {viewModel.mode},
-              onSelectionChanged: (modes) => viewModel.selectMode(modes.single),
             ),
-            const SizedBox(height: 24),
-            if (isDaftar) ...[
-              TextField(
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Nama'),
-              ),
-              const SizedBox(height: 16),
-            ],
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Nomor HP'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Kata sandi'),
-            ),
-            if (viewModel.errorMessage case final message?) ...[
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 24),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-              onPressed: viewModel.isSubmitting ? null : _submit,
-              child: Text(isDaftar ? 'Daftar' : 'Masuk'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -107,3 +128,5 @@ class _SignInFormState extends State<_SignInForm> {
     if (account != null) await session.enter(account);
   }
 }
+
+const _formHeaderHeight = 148.0;

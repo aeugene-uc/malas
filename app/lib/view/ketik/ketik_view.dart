@@ -9,6 +9,11 @@ import '../../viewmodel/draft_view_model.dart';
 import '../../viewmodel/ketik_view_model.dart';
 import '../draft/draft_view.dart';
 import '../format.dart';
+import '../theme/brand_header.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/parts.dart';
+import '../theme/tokens.dart';
 
 /// Opens Ketik. A saved amount shows the Batal toast on the caller's screen,
 /// and [onChanged] runs after the save and after a Batal.
@@ -42,71 +47,139 @@ class KetikView extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<KetikViewModel>();
     final errorMessage = viewModel.errorMessage;
+    final isMasuk = viewModel.direction == Direction.masuk;
+    final amountColor = isMasuk
+        ? MalasColors.textMasuk
+        : MalasColors.textPrimary;
+    const underline = UnderlineInputBorder(
+      borderSide: BorderSide(
+        color: MalasColors.bgBrand,
+        width: MalasSize.cardStroke,
+      ),
+    );
     return Scaffold(
-      appBar: AppBar(title: const Text('Ketik')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
-          SegmentedButton<Direction>(
-            segments: const [
-              ButtonSegment(value: Direction.masuk, label: Text('Masuk')),
-              ButtonSegment(value: Direction.keluar, label: Text('Keluar')),
+          // §5.4: a form keeps only the header hills; the action hides the
+          // coins.
+          BrandHeader(
+            title: 'Ketik',
+            height: _formHeaderHeight,
+            actions: [
+              IconButton(
+                tooltip: 'Tutup',
+                color: MalasColors.textOnBrand,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(MalasIcons.x),
+              ),
             ],
-            selected: {viewModel.direction},
-            onSelectionChanged: (selected) =>
-                viewModel.selectDirection(selected.single),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [RupiahInputFormatter()],
-            style: Theme.of(context).textTheme.headlineSmall,
-            decoration: const InputDecoration(
-              labelText: 'Jumlah',
-              prefixText: 'Rp ',
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s8,
+              MalasSpace.screen,
+              MalasSpace.s24,
             ),
-            onChanged: (text) => viewModel.setAmount(parseRupiahInput(text)),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              for (final category in viewModel.categoriesForDirection)
-                ChoiceChip(
-                  label: Text(category.name),
-                  selected: category.id == viewModel.categoryId,
-                  onSelected: (_) => viewModel.selectCategory(category.id),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedSelector(
+                  labels: const ['Masuk', 'Keluar'],
+                  selectedIndex: isMasuk ? 0 : 1,
+                  onSelected: (index) => viewModel.selectDirection(
+                    index == 0 ? Direction.masuk : Direction.keluar,
+                  ),
                 ),
-            ],
+                const SizedBox(height: MalasSpace.s24),
+                Text('Jumlah', style: MalasText.bodySecondary),
+                const SizedBox(height: MalasSpace.s8),
+                TextField(
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [RupiahInputFormatter()],
+                  style: MalasText.moneyHero.copyWith(color: amountColor),
+                  decoration: InputDecoration(
+                    filled: false,
+                    hintText: '0',
+                    hintStyle: MalasText.moneyHero.copyWith(
+                      color: MalasColors.textDisabled,
+                    ),
+                    prefixText: isMasuk ? '+Rp ' : '−Rp ',
+                    prefixStyle: MalasText.rpHero.copyWith(color: amountColor),
+                    contentPadding: const EdgeInsets.only(
+                      bottom: MalasSpace.s8,
+                    ),
+                    border: underline,
+                    enabledBorder: underline,
+                    focusedBorder: underline,
+                  ),
+                  onChanged: (text) =>
+                      viewModel.setAmount(parseRupiahInput(text)),
+                ),
+                if (viewModel.categoriesForDirection.isNotEmpty) ...[
+                  const SizedBox(height: MalasSpace.s24),
+                  Text('Kategori', style: MalasText.bodySecondary),
+                  const SizedBox(height: MalasSpace.s12),
+                  Wrap(
+                    spacing: MalasSpace.s8,
+                    runSpacing: MalasSpace.s8,
+                    children: [
+                      for (final category in viewModel.categoriesForDirection)
+                        SelectChip(
+                          label: category.name,
+                          isSelected: category.id == viewModel.categoryId,
+                          onPressed: () =>
+                              viewModel.selectCategory(category.id),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    errorMessage,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: MalasColors.bgSurface,
+          border: Border(
+            top: BorderSide(
+              color: MalasColors.borderCard,
+              width: MalasSize.cardStroke,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: MalasSpace.s8),
+                    child: Text(
+                      errorMessage,
+                      style: MalasText.bodySecondary.copyWith(
+                        color: MalasColors.textError,
+                      ),
                     ),
                   ),
+                LipButton(
+                  label: errorMessage == null ? 'Simpan' : 'Coba lagi',
+                  onPressed: _buttonAction(context, viewModel),
                 ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                ),
-                onPressed: _buttonAction(context, viewModel),
-                child: Text(errorMessage == null ? 'Simpan' : 'Coba lagi'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -128,3 +201,5 @@ class KetikView extends StatelessWidget {
     }
   }
 }
+
+const _formHeaderHeight = 150.0;

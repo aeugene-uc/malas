@@ -12,10 +12,14 @@ import 'package:malas/main.dart';
 import 'package:malas/model/draft.dart';
 import 'package:malas/view/catatan/piutang_utang_view.dart';
 import 'package:malas/view/draft/draft_view.dart';
+import 'package:malas/view/theme/lip.dart';
+import 'package:malas/view/theme/parts.dart';
 import 'package:malas/viewmodel/draft_view_model.dart';
 import 'package:provider/provider.dart';
 
 import '../support/recording_adapter.dart';
+
+import 'package:malas/viewmodel/app_shell_view_model.dart';
 
 void main() {
   Future<void> openCatatan(WidgetTester tester) async {
@@ -30,12 +34,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Catatan'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.catatan)));
     await tester.pumpAndSettle();
   }
 
@@ -57,9 +56,8 @@ void main() {
         adapter.requests.where((r) => r.path == '/transactions').length;
     Future<void> openTab(String label) async {
       await tester.tap(
-        find.descendant(
-          of: find.byType(NavigationBar),
-          matching: find.text(label),
+        find.byKey(
+          ValueKey(AppTab.values.firstWhere((tab) => tab.label == label)),
         ),
       );
       await tester.pumpAndSettle();
@@ -91,9 +89,8 @@ void main() {
         adapter.requests.where((r) => r.path == '/home').length;
     Future<void> openTab(String label) async {
       await tester.tap(
-        find.descendant(
-          of: find.byType(NavigationBar),
-          matching: find.text(label),
+        find.byKey(
+          ValueKey(AppTab.values.firstWhere((tab) => tab.label == label)),
         ),
       );
       await tester.pumpAndSettle();
@@ -112,7 +109,7 @@ void main() {
     expect(find.text('Min, 15 Nov'), findsOneWidget);
     expect(find.text('Sab, 14 Nov'), findsOneWidget);
     expect(find.text('Diubah 2x'), findsOneWidget);
-    expect(find.text('Belum lunas Rp 30.000'), findsOneWidget);
+    expect(find.text('Sisa Rp 30.000'), findsOneWidget);
   });
 
   testWidgets('clearingTheSearchShowsEveryEntryAgain', (tester) async {
@@ -218,7 +215,7 @@ void main() {
     await editGasTo30000(tester);
 
     expect(find.text('Diubah 1x'), findsOneWidget);
-    expect(find.text('-Rp 30.000'), findsOneWidget);
+    expect(find.bySemanticsLabel('\u2212Rp 30.000'), findsOneWidget);
     expect(find.text('Batal'), findsNothing);
   });
 
@@ -235,8 +232,8 @@ void main() {
 
     expect(
       find.descendant(
-        of: find.byType(ListTile),
-        matching: find.text('Rp 25.000'),
+        of: find.byType(RowsCard),
+        matching: find.bySemanticsLabel('Rp 25.000'),
       ),
       findsOneWidget,
     );
@@ -249,9 +246,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Pak Budi'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Utang Rp'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SegmentedSelector),
+        matching: find.text('Utang'),
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('Kembalikan Rp 50.000'), findsOneWidget);
+    expect(find.text('Kembalikan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Rp 50.000'), findsOneWidget);
   });
 
   testWidgets('bayarAmountShowsThousandsDots', (tester) async {
@@ -261,7 +264,7 @@ void main() {
     await tester.tap(find.text('Pak Budi'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(TextButton, 'Bayar'));
+    await tester.tap(find.widgetWithText(LipButton, 'Bayar'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, '30.000'), findsOneWidget);
 
@@ -271,12 +274,7 @@ void main() {
 
   testWidgets('anAnalisisRowOpensCatatanNarrowedToIt', (tester) async {
     await openCatatan(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Analisis'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.analisis)));
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(find.text('Sewa'), 100);
@@ -285,20 +283,15 @@ void main() {
     await tester.tap(find.text('Sewa'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(InputChip, 'Sewa'), findsOneWidget);
+    expect(find.widgetWithText(LipPressable, 'Sewa'), findsOneWidget);
   });
 
   testWidgets('theBerandaPiutangCardOpensPiutangUtang', (tester) async {
     await openCatatan(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Beranda'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey(AppTab.beranda)));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Piutang Rp 240.000'));
+    await tester.tap(find.text('Piutang'));
     await tester.pumpAndSettle();
 
     expect(find.byType(PiutangUtangView), findsOneWidget);

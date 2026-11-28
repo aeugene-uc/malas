@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -5,8 +7,13 @@ import 'package:provider/provider.dart';
 import '../../data/draft_repository.dart';
 import '../../model/draft.dart';
 import '../../viewmodel/foto_view_model.dart';
+import '../theme/brand_header.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/parts.dart';
+import '../theme/tokens.dart';
 
-/// Opened from Beranda's Foto button. Pops with the [AiReadResult], which the
+/// Opened from the hold menu's Foto. Pops with the [AiReadResult], which the
 /// draft screen opens.
 class FotoView extends StatelessWidget {
   const FotoView({super.key});
@@ -26,54 +33,149 @@ class FotoView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<FotoViewModel>();
+    final imageBytes = viewModel.imageBytes;
+    final errorMessage = viewModel.errorMessage;
     return Scaffold(
-      appBar: AppBar(title: const Text('Foto')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SegmentedButton<PhotoKind>(
-                segments: const [
-                  ButtonSegment(value: PhotoKind.nota, label: Text('Nota')),
-                  ButtonSegment(
-                    value: PhotoKind.bukuCatatan,
-                    label: Text('Buku catatan'),
-                  ),
-                ],
-                selected: {viewModel.kind},
-                onSelectionChanged: (kinds) =>
-                    viewModel.selectKind(kinds.single),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // §5.4: a form keeps only the header hills; the action hides the
+          // coins.
+          BrandHeader(
+            title: 'Foto',
+            height: _formHeaderHeight,
+            actions: [
+              IconButton(
+                tooltip: 'Tutup',
+                color: MalasColors.textOnBrand,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(MalasIcons.x),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: switch (viewModel.imageBytes) {
-                  final imageBytes? => Image.memory(
-                    imageBytes,
-                    fit: BoxFit.contain,
-                  ),
-                  null => const SizedBox.shrink(),
-                },
+            ],
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MalasSpace.screen,
+                MalasSpace.s8,
+                MalasSpace.screen,
+                MalasSpace.s24,
               ),
-              if (viewModel.errorMessage case final message?)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedSelector(
+                    labels: const ['Nota', 'Buku catatan'],
+                    selectedIndex: viewModel.kind == PhotoKind.nota ? 0 : 1,
+                    onSelected: (index) => viewModel.selectKind(
+                      index == 0 ? PhotoKind.nota : PhotoKind.bukuCatatan,
                     ),
                   ),
-                ),
-              if (viewModel.isReading)
-                const _ReadingIndicator()
-              else
-                _Controls(viewModel: viewModel),
-            ],
+                  const SizedBox(height: MalasSpace.s24),
+                  Expanded(
+                    child: imageBytes == null
+                        ? const _EmptyPhotoCard()
+                        : _PhotoPreviewCard(imageBytes: imageBytes),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: MalasColors.bgSurface,
+          border: Border(
+            top: BorderSide(
+              color: MalasColors.borderCard,
+              width: MalasSize.cardStroke,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: MalasSpace.s8),
+                    child: Text(
+                      errorMessage,
+                      style: MalasText.bodySecondary.copyWith(
+                        color: MalasColors.textError,
+                      ),
+                    ),
+                  ),
+                if (viewModel.isReading)
+                  const _ReadingIndicator()
+                else
+                  _Controls(viewModel: viewModel),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _EmptyPhotoCard extends StatelessWidget {
+  const _EmptyPhotoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: MalasColors.bgBrandSoft,
+        borderRadius: BorderRadius.circular(MalasRadius.lg),
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(MalasSpace.s24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            MalasIcons.cameraFill,
+            size: _emptyCameraIconSize,
+            color: MalasColors.iconBrand,
+          ),
+          const SizedBox(height: MalasSpace.s12),
+          Text('Belum ada foto', style: MalasText.bodySecondary),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoPreviewCard extends StatelessWidget {
+  const _PhotoPreviewCard({required this.imageBytes});
+
+  final Uint8List imageBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    // A flat card (§2): the photo is information.
+    return Container(
+      decoration: BoxDecoration(
+        color: MalasColors.bgSurface,
+        borderRadius: BorderRadius.circular(MalasRadius.lg),
+        border: Border.all(
+          color: MalasColors.borderCard,
+          width: MalasSize.cardStroke,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.memory(imageBytes, fit: BoxFit.contain),
     );
   }
 }
@@ -85,39 +187,56 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const pickButtonSize = Size(0, 72);
+    if (!viewModel.hasImage) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LipButton(
+            label: 'Kamera',
+            icon: MalasIcons.camera,
+            onPressed: () => viewModel.pickImage(ImageSource.camera),
+          ),
+          const SizedBox(height: MalasSpace.s12),
+          LipButton(
+            label: 'Galeri',
+            icon: MalasIcons.image,
+            variant: LipVariant.secondary,
+            onPressed: () => viewModel.pickImage(ImageSource.gallery),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        LipButton(
+          label: viewModel.errorMessage == null ? 'Baca' : 'Coba lagi',
+          onPressed: () => _readAndClose(context),
+        ),
+        const SizedBox(height: MalasSpace.s12),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: pickButtonSize),
+              child: LipButton(
+                label: 'Kamera',
+                icon: MalasIcons.camera,
+                variant: LipVariant.secondary,
+                isSmall: true,
                 onPressed: () => viewModel.pickImage(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Kamera'),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: MalasSpace.s12),
             Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: pickButtonSize),
+              child: LipButton(
+                label: 'Galeri',
+                icon: MalasIcons.image,
+                variant: LipVariant.secondary,
+                isSmall: true,
                 onPressed: () => viewModel.pickImage(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Galeri'),
               ),
             ),
           ],
         ),
-        if (viewModel.hasImage) ...[
-          const SizedBox(height: 12),
-          FilledButton(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-            onPressed: () => _readAndClose(context),
-            child: Text(viewModel.errorMessage == null ? 'Baca' : 'Coba lagi'),
-          ),
-        ],
       ],
     );
   }
@@ -136,16 +255,22 @@ class _ReadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 24),
+    return SizedBox(
+      height: MalasSize.buttonBesar,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox.square(dimension: 24, child: CircularProgressIndicator()),
-          SizedBox(width: 12),
-          Text('Membaca…'),
+          const SizedBox.square(
+            dimension: MalasSpace.s24,
+            child: CircularProgressIndicator(),
+          ),
+          const SizedBox(width: MalasSpace.s12),
+          Text('Membaca…', style: MalasText.bodyStrong),
         ],
       ),
     );
   }
 }
+
+const _formHeaderHeight = 150.0;
+const _emptyCameraIconSize = 48.0;

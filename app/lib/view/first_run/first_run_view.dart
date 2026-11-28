@@ -5,6 +5,9 @@ import '../../data/auth_repository.dart';
 import '../../model/account.dart';
 import '../../viewmodel/first_run_view_model.dart';
 import '../../viewmodel/session_view_model.dart';
+import '../theme/brand_header.dart';
+import '../theme/lip.dart';
+import '../theme/tokens.dart';
 
 /// The consent wording covers what #17 and the backend contract require:
 /// the AI service abroad (§7.1), speech-to-text by Google, and records on
@@ -60,52 +63,92 @@ class _FirstRunFormState extends State<_FirstRunForm> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<FirstRunViewModel>();
-    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text(appPurposeLine, style: textTheme.titleMedium),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _storeNameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Nama usaha'),
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const BrandHeader(
+            title: 'MALAS',
+            height: _formHeaderHeight,
+            // Non-empty actions suppresses coins so this form keeps hills only
+            // (DESIGN.md §5.4).
+            actions: [SizedBox.shrink()],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s24,
             ),
-            const SizedBox(height: 24),
-            Text('Usaha kamu apa?', style: textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final type in BusinessType.values)
-                  FilterChip(
-                    label: Text(type.label),
-                    selected: viewModel.selectedTypes.contains(type),
-                    onSelected: (_) => viewModel.toggleType(type),
+                Text(appPurposeLine, style: MalasText.bodyStrong),
+                const SizedBox(height: MalasSpace.s20),
+                TextField(
+                  controller: _storeNameController,
+                  textCapitalization: TextCapitalization.words,
+                  style: MalasText.body,
+                  decoration: const InputDecoration(labelText: 'Nama usaha'),
+                ),
+                const SizedBox(height: MalasSpace.s24),
+                Text('Usaha kamu apa?', style: MalasText.titleSection),
+                const SizedBox(height: MalasSpace.s12),
+                Wrap(
+                  spacing: MalasSpace.s8,
+                  runSpacing: MalasSpace.s8,
+                  children: [
+                    for (final type in BusinessType.values)
+                      _BusinessTypeChip(
+                        label: type.label,
+                        isSelected: viewModel.selectedTypes.contains(type),
+                        onPressed: () => viewModel.toggleType(type),
+                      ),
+                  ],
+                ),
+                if (widget.needsConsent) ...[
+                  const SizedBox(height: MalasSpace.s24),
+                  Text(consentLine, style: MalasText.bodySecondary),
+                ],
+                if (viewModel.errorMessage case final message?) ...[
+                  const SizedBox(height: MalasSpace.s16),
+                  Text(
+                    message,
+                    style: MalasText.bodySecondary.copyWith(
+                      color: MalasColors.textError,
+                    ),
                   ),
+                ],
               ],
             ),
-            if (widget.needsConsent) ...[
-              const SizedBox(height: 24),
-              Text(consentLine, style: textTheme.bodySmall),
-            ],
-            if (viewModel.errorMessage case final message?) ...[
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 24),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-              onPressed: viewModel.isSubmitting ? null : _submit,
-              child: Text(widget.needsConsent ? 'Setuju dan mulai' : 'Mulai'),
+          ),
+        ],
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: MalasColors.bgSurface,
+          border: Border(
+            top: BorderSide(
+              color: MalasColors.borderCard,
+              width: MalasSize.cardStroke,
             ),
-          ],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s12,
+              MalasSpace.screen,
+              MalasSpace.s20,
+            ),
+            child: LipButton(
+              label: widget.needsConsent ? 'Setuju dan mulai' : 'Mulai',
+              onPressed: viewModel.isSubmitting ? null : _submit,
+            ),
+          ),
         ),
       ),
     );
@@ -119,3 +162,49 @@ class _FirstRunFormState extends State<_FirstRunForm> {
     if (account != null) await session.enter(account);
   }
 }
+
+class _BusinessTypeChip extends StatelessWidget {
+  const _BusinessTypeChip({
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: isSelected,
+      child: LipPressable(
+        onPressed: onPressed,
+        fill: isSelected ? MalasColors.bgBrand : MalasColors.bgSecondary,
+        lip: isSelected ? MalasColors.borderLip : MalasColors.borderLipSekunder,
+        borderRadius: BorderRadius.circular(MalasRadius.chip),
+        child: SizedBox(
+          height: MalasSize.buttonKecil,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: MalasText.labelChip.copyWith(
+                    color: isSelected
+                        ? MalasColors.textOnBrand
+                        : MalasColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const _formHeaderHeight = 148.0;

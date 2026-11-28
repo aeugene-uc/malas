@@ -7,7 +7,11 @@ import '../../data/transaction_repository.dart';
 import '../../model/transaction.dart';
 import '../../viewmodel/piutang_utang_view_model.dart';
 import '../format.dart';
-import 'catatan_view.dart' show formatEntryDate;
+import '../theme/brand_header.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/parts.dart';
+import '../theme/tokens.dart';
 
 /// Piutang and Utang (§7.4), from Catatan or Beranda's card.
 class PiutangUtangView extends StatelessWidget {
@@ -28,82 +32,153 @@ class PiutangUtangView extends StatelessWidget {
   }
 }
 
-class _PiutangUtangScreen extends StatelessWidget {
+class _PiutangUtangScreen extends StatefulWidget {
   const _PiutangUtangScreen();
+
+  @override
+  State<_PiutangUtangScreen> createState() => _PiutangUtangScreenState();
+}
+
+class _PiutangUtangScreenState extends State<_PiutangUtangScreen> {
+  bool _isPiutangShown = true;
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<PiutangUtangViewModel>();
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Piutang/Utang'),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: 'Piutang ${formatRupiah(viewModel.piutangTotal)}'),
-              Tab(text: 'Utang ${formatRupiah(viewModel.utangTotal)}'),
-            ],
-          ),
-        ),
-        body: switch (viewModel) {
-          PiutangUtangViewModel(isLoading: true) => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          PiutangUtangViewModel(
-            errorMessage: final message?,
-            piutang: [],
-            utang: [],
-          ) =>
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(message),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: viewModel.load,
-                    child: const Text('Coba lagi'),
-                  ),
-                ],
+    final total = _isPiutangShown
+        ? viewModel.piutangTotal
+        : viewModel.utangTotal;
+    return Scaffold(
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          BrandHeader(
+            title: 'Piutang/Utang',
+            height: _headerHeight,
+            actions: [
+              IconButton(
+                tooltip: 'Tutup',
+                color: MalasColors.textOnBrand,
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(MalasIcons.x),
               ),
-            ),
-          _ => TabBarView(
-            children: [
-              _OpenList(transactions: viewModel.piutang, isPiutang: true),
-              _OpenList(transactions: viewModel.utang, isPiutang: false),
             ],
+            controls: SegmentedSelector(
+              labels: const ['Piutang', 'Utang'],
+              values: [
+                formatRupiah(viewModel.piutangTotal),
+                formatRupiah(viewModel.utangTotal),
+              ],
+              selectedIndex: _isPiutangShown ? 0 : 1,
+              isOnBrand: true,
+              onSelected: (index) =>
+                  setState(() => _isPiutangShown = index == 0),
+            ),
           ),
-        },
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MalasSpace.screen,
+              MalasSpace.s16,
+              MalasSpace.screen,
+              MalasSpace.s24,
+            ),
+            child: switch (viewModel) {
+              PiutangUtangViewModel(isLoading: true) => const _Skeleton(),
+              PiutangUtangViewModel(
+                errorMessage: final message?,
+                piutang: [],
+                utang: [],
+              ) =>
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: MalasText.body,
+                    ),
+                    const SizedBox(height: MalasSpace.s16),
+                    LipButton(label: 'Coba lagi', onPressed: viewModel.load),
+                  ],
+                ),
+              _ => _OpenList(
+                transactions: _isPiutangShown
+                    ? viewModel.piutang
+                    : viewModel.utang,
+                total: total,
+                isPiutang: _isPiutangShown,
+              ),
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _OpenList extends StatelessWidget {
-  const _OpenList({required this.transactions, required this.isPiutang});
-
-  final List<Transaction> transactions;
-  final bool isPiutang;
+/// §4.3: skeleton blocks at row size instead of a spinner.
+class _Skeleton extends StatelessWidget {
+  const _Skeleton();
 
   @override
   Widget build(BuildContext context) {
-    if (transactions.isEmpty) {
-      return Center(
-        child: Text(isPiutang ? 'Tidak ada piutang' : 'Tidak ada utang'),
-      );
-    }
-    return ListView(
+    return Column(
       children: [
-        for (final transaction in transactions)
-          _OpenTile(transaction: transaction, isPiutang: isPiutang),
+        for (var index = 0; index < _skeletonRowCount; index++)
+          Container(
+            height: MalasSize.row,
+            margin: const EdgeInsets.only(bottom: MalasSpace.s12),
+            decoration: BoxDecoration(
+              color: MalasColors.bgSkeleton,
+              borderRadius: BorderRadius.circular(MalasRadius.lg),
+            ),
+          ),
       ],
     );
   }
 }
 
-class _OpenTile extends StatelessWidget {
-  const _OpenTile({required this.transaction, required this.isPiutang});
+class _OpenList extends StatelessWidget {
+  const _OpenList({
+    required this.transactions,
+    required this.total,
+    required this.isPiutang,
+  });
+
+  final List<Transaction> transactions;
+  final int total;
+  final bool isPiutang;
+
+  @override
+  Widget build(BuildContext context) {
+    if (transactions.isEmpty) {
+      return Text(
+        isPiutang ? 'Tidak ada piutang' : 'Tidak ada utang',
+        textAlign: TextAlign.center,
+        style: MalasText.body,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: isPiutang ? 'Piutang' : 'Utang',
+          trailing: MoneyText(total),
+        ),
+        RowsCard(
+          rows: [
+            for (final transaction in transactions)
+              _OpenRow(transaction: transaction, isPiutang: isPiutang),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// A §3 row for one person, with Ingatkan and Bayar right-aligned below it.
+class _OpenRow extends StatelessWidget {
+  const _OpenRow({required this.transaction, required this.isPiutang});
 
   final Transaction transaction;
   final bool isPiutang;
@@ -111,61 +186,88 @@ class _OpenTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final personName = transaction.person?.name ?? 'Tanpa nama';
-    // The person is the card's title, so the details list only the lines.
-    final lineDescriptions = transaction.lines
-        .map(describeLine)
-        .where((description) => description.isNotEmpty)
-        .join(', ');
-    final details = [
-      if (lineDescriptions.isNotEmpty) lineDescriptions,
-      formatEntryDate(transaction.businessDate),
-      if (transaction.dueDate case final dueDate?)
-        'Jatuh tempo ${formatEntryDate(dueDate)}',
-    ];
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    personName,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+    final dueDate = transaction.dueDate;
+    final meta = dueDate != null
+        ? 'Jatuh tempo ${formatEntryDate(dueDate)}'
+        : formatEntryDate(transaction.businessDate);
+    final canRemind = isPiutang;
+    final canPay = !transaction.isKembalikan;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        MalasSpace.s16,
+        MalasSpace.s16,
+        MalasSpace.s16,
+        MalasSpace.s12,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CategoryTile(
+                tone: isPiutang ? CategoryTone.minuman : CategoryTone.jeruk,
+                icon: isPiutang
+                    ? MalasIcons.usersThreeFill
+                    : MalasIcons.handCoinsFill,
+              ),
+              const SizedBox(width: MalasSpace.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            personName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: MalasText.titleItem,
+                          ),
+                        ),
+                        const SizedBox(width: MalasSpace.s12),
+                        MoneyText(transaction.remaining.abs()),
+                      ],
+                    ),
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: MalasText.bodySecondary,
+                    ),
+                    if (transaction.isKembalikan) ...[
+                      const SizedBox(height: MalasSpace.s4),
+                      const TagChip('Kembalikan', tone: TagTone.perhatian),
+                    ],
+                  ],
                 ),
-                Text(
-                  transaction.isKembalikan
-                      ? 'Kembalikan ${formatRupiah(-transaction.remaining)}'
-                      : formatRupiah(transaction.remaining),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            Text(
-              details.join(' · '),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+              ),
+            ],
+          ),
+          if (canRemind || canPay) ...[
+            const SizedBox(height: MalasSpace.s12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (isPiutang)
+                if (canRemind)
                   TextButton(
                     onPressed: () => _remind(transaction, personName),
                     child: const Text('Ingatkan'),
                   ),
-                if (!transaction.isKembalikan)
-                  TextButton(
+                if (canRemind && canPay) const SizedBox(width: MalasSpace.s12),
+                if (canPay)
+                  LipButton(
+                    label: 'Bayar',
+                    isSmall: true,
                     onPressed: () => _askPayment(context, transaction),
-                    child: const Text('Bayar'),
                   ),
               ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -183,28 +285,30 @@ class _OpenTile extends StatelessWidget {
     );
   }
 
+  /// DESIGN §4.2: a sheet instead of a dialog.
   Future<void> _askPayment(BuildContext context, Transaction transaction) {
     final viewModel = context.read<PiutangUtangViewModel>();
-    return showDialog<void>(
+    return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: viewModel,
-        child: _PaymentDialog(transaction: transaction),
+        child: _PaymentSheet(transaction: transaction),
       ),
     );
   }
 }
 
-class _PaymentDialog extends StatefulWidget {
-  const _PaymentDialog({required this.transaction});
+class _PaymentSheet extends StatefulWidget {
+  const _PaymentSheet({required this.transaction});
 
   final Transaction transaction;
 
   @override
-  State<_PaymentDialog> createState() => _PaymentDialogState();
+  State<_PaymentSheet> createState() => _PaymentSheetState();
 }
 
-class _PaymentDialogState extends State<_PaymentDialog> {
+class _PaymentSheetState extends State<_PaymentSheet> {
   late final _amountController = TextEditingController(
     text: groupThousands(widget.transaction.remaining),
   );
@@ -219,40 +323,62 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   @override
   Widget build(BuildContext context) {
     final errorMessage = context.watch<PiutangUtangViewModel>().errorMessage;
-    return AlertDialog(
-      title: const Text('Bayar'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _amountController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [RupiahInputFormatter()],
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Jumlah',
-              prefixText: 'Rp ',
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          MalasSpace.screen,
+          MalasSpace.s12,
+          MalasSpace.screen,
+          MalasSpace.s20 + keyboardHeight,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: _handleWidth,
+                height: _handleHeight,
+                decoration: BoxDecoration(
+                  color: MalasColors.borderCard,
+                  borderRadius: BorderRadius.circular(MalasRadius.xs),
+                ),
+              ),
             ),
-          ),
-          if (errorMessage != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              errorMessage,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: MalasSpace.s20),
+            Text('Bayar', style: MalasText.titleScreen),
+            const SizedBox(height: MalasSpace.s16),
+            TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [RupiahInputFormatter()],
+              autofocus: true,
+              style: MalasText.moneyRow,
+              decoration: const InputDecoration(
+                labelText: 'Jumlah',
+                prefixText: 'Rp ',
+              ),
+            ),
+            if (errorMessage != null) ...[
+              const SizedBox(height: MalasSpace.s12),
+              Text(
+                errorMessage,
+                style: MalasText.bodySecondary.copyWith(
+                  color: MalasColors.textError,
+                ),
+              ),
+            ],
+            const SizedBox(height: MalasSpace.s24),
+            LipButton(label: 'Simpan', onPressed: _isSaving ? null : _save),
+            const SizedBox(height: MalasSpace.s8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
             ),
           ],
-        ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: _isSaving ? null : _save,
-          child: const Text('Simpan'),
-        ),
-      ],
     );
   }
 
@@ -270,6 +396,14 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     }
   }
 }
+
+/// Tall enough for the 2-line SegmentedSelector to clear the far hill (§5.1).
+const _headerHeight = 200.0;
+const _skeletonRowCount = 3;
+
+/// §4.2 sheet handle.
+const _handleWidth = 40.0;
+const _handleHeight = 5.0;
 
 /// A polite, fixed reminder the owner can edit before sending (§15).
 String buildReminderText({

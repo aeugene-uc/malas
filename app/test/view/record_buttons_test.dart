@@ -5,9 +5,12 @@ import 'package:malas/data/auth_repository.dart';
 import 'package:malas/main.dart';
 import 'package:malas/view/bicara/bicara_view.dart';
 import 'package:malas/view/foto/foto_view.dart';
+import 'package:malas/view/ketik/ketik_view.dart';
+import 'package:malas/viewmodel/app_shell_view_model.dart';
 
+/// §4.1: the nav mic records on tap; holding it offers Bicara, Foto, Ketik.
 void main() {
-  Future<void> tapRecordButton(WidgetTester tester, String label) async {
+  Future<void> openApp(WidgetTester tester) async {
     FlutterSecureStorage.setMockInitialValues({AuthRepository.tokenKey: 't'});
     await tester.pumpWidget(
       MalasApp(
@@ -16,26 +19,48 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FilledButton),
-        matching: find.text(label),
-      ),
-    );
-    await tester.pumpAndSettle();
   }
 
-  testWidgets('bicaraButtonOpensTheBicaraScreen', (tester) async {
-    await tapRecordButton(tester, 'Bicara');
+  Finder mic() => find.bySemanticsLabel('Bicara').first;
+
+  testWidgets('tappingTheMicOpensBicara', (tester) async {
+    await openApp(tester);
+    await tester.tap(mic());
+    await tester.pumpAndSettle();
 
     expect(find.byType(BicaraView), findsOneWidget);
     expect(find.text('Mulai'), findsOneWidget);
   });
 
-  testWidgets('fotoButtonOpensTheFotoScreen', (tester) async {
-    await tapRecordButton(tester, 'Foto');
+  testWidgets('theMicRecordsFromAnotherTab', (tester) async {
+    await openApp(tester);
+    await tester.tap(find.byKey(const ValueKey(AppTab.catatan)));
+    await tester.pumpAndSettle();
+    await tester.tap(mic());
+    await tester.pumpAndSettle();
 
-    expect(find.byType(FotoView), findsOneWidget);
-    expect(find.text('Kamera'), findsOneWidget);
+    expect(find.byType(BicaraView), findsOneWidget);
+  });
+
+  for (final (label, screen) in [('Foto', FotoView), ('Ketik', KetikView)]) {
+    testWidgets('holdingTheMicOffers$label', (tester) async {
+      await openApp(tester);
+      await tester.longPress(mic());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(screen), findsOneWidget);
+    });
+  }
+
+  testWidgets('tutupClosesTheHoldMenu', (tester) async {
+    await openApp(tester);
+    await tester.longPress(mic());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tutup'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Foto'), findsNothing);
   });
 }

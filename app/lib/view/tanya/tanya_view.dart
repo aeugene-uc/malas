@@ -6,6 +6,10 @@ import '../../data/tanya_repository.dart';
 import '../../viewmodel/session_view_model.dart';
 import '../../viewmodel/tanya_view_model.dart';
 import '../first_run/trial_sheet.dart';
+import '../theme/brand_header.dart';
+import '../theme/icons.dart';
+import '../theme/lip.dart';
+import '../theme/tokens.dart';
 import 'tanya_text.dart';
 
 /// Tanya (§7.8): ask in words, get an answer whose numbers come from code.
@@ -46,42 +50,29 @@ class _TanyaScreenState extends State<_TanyaScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _offerPro());
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Tanya')),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const BrandHeader(title: 'Tanya', height: _tanyaHeaderHeight),
           Expanded(
             child: ListView(
               reverse: true,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(
+                MalasSpace.screen,
+                MalasSpace.s8,
+                MalasSpace.screen,
+                MalasSpace.s16,
+              ),
               children: [
                 for (final exchange in viewModel.exchanges.reversed)
-                  _ExchangeBubbles(exchange: exchange),
+                  _ExchangeCards(exchange: exchange),
               ],
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _questionController,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: const InputDecoration(labelText: 'Tanya'),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Kirim',
-                    icon: const Icon(Icons.send),
-                    onPressed: viewModel.isAsking ? null : _send,
-                  ),
-                ],
-              ),
-            ),
+          _QuestionComposer(
+            controller: _questionController,
+            isAsking: viewModel.isAsking,
+            onSend: _send,
           ),
         ],
       ),
@@ -108,49 +99,126 @@ class _TanyaScreenState extends State<_TanyaScreen> {
   }
 }
 
-class _ExchangeBubbles extends StatelessWidget {
-  const _ExchangeBubbles({required this.exchange});
+class _QuestionComposer extends StatelessWidget {
+  const _QuestionComposer({
+    required this.controller,
+    required this.isAsking,
+    required this.onSend,
+  });
+
+  final TextEditingController controller;
+  final bool isAsking;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: MalasColors.bgSurface,
+        border: Border(
+          top: BorderSide(
+            color: MalasColors.borderCard,
+            width: MalasSize.cardStroke,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            MalasSpace.screen,
+            MalasSpace.s12,
+            MalasSpace.screen,
+            MalasSpace.s12,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.send,
+                  style: MalasText.body,
+                  onSubmitted: (_) => onSend(),
+                  decoration: const InputDecoration(labelText: 'Tanya'),
+                ),
+              ),
+              const SizedBox(width: MalasSpace.s8),
+              SizedBox(
+                width: MalasSize.touch,
+                child: Tooltip(
+                  message: 'Kirim',
+                  excludeFromSemantics: true,
+                  child: LipPressable(
+                    semanticLabel: 'Kirim',
+                    onPressed: isAsking ? null : onSend,
+                    fill: MalasColors.bgBrand,
+                    lip: MalasColors.borderLip,
+                    borderRadius: BorderRadius.circular(MalasSize.touch / 2),
+                    child: const SizedBox(
+                      height: MalasSize.touch,
+                      child: Icon(
+                        MalasIcons.paperPlaneRight,
+                        size: _sendIconSize,
+                        color: MalasColors.iconOnInk,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExchangeCards extends StatelessWidget {
+  const _ExchangeCards({required this.exchange});
 
   final TanyaExchange exchange;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final answer = exchange.answer;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Bubble(
+        Align(
           alignment: Alignment.centerRight,
-          color: colorScheme.primaryContainer,
-          child: Text(exchange.question),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: MalasSpace.s8),
+            padding: const EdgeInsets.all(MalasSpace.s12),
+            constraints: const BoxConstraints(maxWidth: _maxBubbleWidth),
+            decoration: BoxDecoration(
+              color: MalasColors.bgSelected,
+              borderRadius: BorderRadius.circular(MalasRadius.lg),
+            ),
+            child: Text(exchange.question, style: MalasText.body),
+          ),
         ),
         if (exchange.isPending)
-          const _Bubble(
-            alignment: Alignment.centerLeft,
-            child: SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+          const _AnswerCard(child: _AnswerSkeleton())
+        else if (exchange.errorMessage case final message?)
+          _AnswerCard(
+            child: Text(
+              message,
+              style: MalasText.body.copyWith(color: MalasColors.textError),
             ),
           )
-        else if (exchange.errorMessage case final message?)
-          _Bubble(
-            alignment: Alignment.centerLeft,
-            child: Text(message, style: TextStyle(color: colorScheme.error)),
-          )
         else if (answer != null)
-          _Bubble(
-            alignment: Alignment.centerLeft,
+          _AnswerCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(fillAnswer(answer)),
+                Text(fillAnswer(answer), style: MalasText.body),
                 if (answer.daysRecorded case final days?)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: MalasSpace.s8),
                     child: Text(
                       '$days hari dicatat',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: MalasText.bodySecondary,
                     ),
                   ),
               ],
@@ -161,27 +229,66 @@ class _ExchangeBubbles extends StatelessWidget {
   }
 }
 
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.alignment, required this.child, this.color});
+/// DESIGN.md §2: answers are information, so flat cards with 2px borderCard.
+class _AnswerCard extends StatelessWidget {
+  const _AnswerCard({required this.child});
 
-  final Alignment alignment;
   final Widget child;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        constraints: const BoxConstraints(maxWidth: 300),
-        decoration: BoxDecoration(
-          color: color ?? Theme.of(context).colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(16),
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _maxBubbleWidth),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: MalasSpace.s16),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(MalasSpace.s16),
+              child: child,
+            ),
+          ),
         ),
-        child: child,
       ),
     );
   }
 }
+
+class _AnswerSkeleton extends StatelessWidget {
+  const _AnswerSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: _skeletonLineWide,
+            height: MalasSpace.s16,
+            decoration: BoxDecoration(
+              color: MalasColors.bgSkeleton,
+              borderRadius: BorderRadius.circular(MalasRadius.xs),
+            ),
+          ),
+          const SizedBox(height: MalasSpace.s8),
+          Container(
+            width: _skeletonLineShort,
+            height: MalasSpace.s16,
+            decoration: BoxDecoration(
+              color: MalasColors.bgSkeleton,
+              borderRadius: BorderRadius.circular(MalasRadius.xs),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const _tanyaHeaderHeight = 160.0;
+const _sendIconSize = 20.0;
+const _maxBubbleWidth = 300.0;
+const _skeletonLineWide = 200.0;
+const _skeletonLineShort = 120.0;

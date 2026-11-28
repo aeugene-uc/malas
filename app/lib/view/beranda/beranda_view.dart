@@ -17,6 +17,11 @@ import '../foto/foto_view.dart';
 import '../format.dart';
 import '../ketik/ketik_view.dart';
 import '../settings/settings_view.dart';
+import '../theme/brand_header.dart';
+import '../theme/lip.dart';
+import '../theme/parts.dart';
+import '../theme/tokens.dart';
+import '../theme/icons.dart';
 
 /// Spec §6 Beranda, top to bottom: today's Masuk and Keluar with the
 /// comparisons, the cards that have something, today's entries, and the
@@ -64,6 +69,41 @@ class _BerandaScreenState extends State<_BerandaScreen> {
   void _reloadWhenOpened() {
     if (_appShell.selectedTab == AppTab.beranda) {
       context.read<BerandaViewModel>().load();
+      _runPendingCapture();
+    }
+  }
+
+  /// Any save ends the guided entry, whichever button made it.
+  void _onChanged() {
+    context.read<BerandaViewModel>().load();
+    context.read<SessionViewModel?>()?.finishGuidedEntry();
+  }
+
+  /// The nav mic's choice (§4.1). Every mode needs the server's business
+  /// date, so it waits for /home.
+  void _runPendingCapture() {
+    final home = context.read<BerandaViewModel>().home;
+    if (home == null) return;
+    final mode = _appShell.takePendingCapture();
+    if (mode == null) return;
+    final businessToday = home.today.businessDate;
+    switch (mode) {
+      case CaptureMode.bicara:
+        _readThenOpenDraft(
+          context,
+          captureRoute: BicaraView.route(),
+          businessToday: businessToday,
+          onChanged: _onChanged,
+        );
+      case CaptureMode.foto:
+        _readThenOpenDraft(
+          context,
+          captureRoute: FotoView.route(),
+          businessToday: businessToday,
+          onChanged: _onChanged,
+        );
+      case CaptureMode.ketik:
+        openKetik(context, businessToday: businessToday, onChanged: _onChanged);
     }
   }
 
@@ -73,62 +113,25 @@ class _BerandaScreenState extends State<_BerandaScreen> {
     final session = context.watch<SessionViewModel?>();
     final isGuidedEntryDue = session?.isGuidedEntryDue ?? false;
     final home = viewModel.home;
-    if (home != null) _reopenUnsentDrafts(context, viewModel, home);
-    // Any save ends the guided entry, whichever button made it.
-    void onChanged() {
-      viewModel.load();
-      session?.finishGuidedEntry();
+    if (home != null) {
+      _reopenUnsentDrafts(context, viewModel, home);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _runPendingCapture();
+      });
     }
-
     return Scaffold(
-      appBar: AppBar(title: const _StoreNameTitle()),
-      body: Column(
-        children: [
-          Expanded(
-            child: home == null
-                ? _FirstLoadState(viewModel: viewModel)
-                : RefreshIndicator(
-                    onRefresh: viewModel.load,
-                    child: _HomeList(
-                      home: home,
-                      errorMessage: viewModel.errorMessage,
-                      guidedEntry: isGuidedEntryDue
-                          ? _GuidedEntryCard(
-                              onLewati: session!.finishGuidedEntry,
-                            )
-                          : null,
-                    ),
-                  ),
-          ),
-          _RecordButtons(
-            // All three need the server's business date, so they wait for
-            // /home.
-            onBicara: home == null
-                ? null
-                : () => _readThenOpenDraft(
-                    context,
-                    captureRoute: BicaraView.route(),
-                    businessToday: home.today.businessDate,
-                    onChanged: onChanged,
-                  ),
-            onFoto: home == null
-                ? null
-                : () => _readThenOpenDraft(
-                    context,
-                    captureRoute: FotoView.route(),
-                    businessToday: home.today.businessDate,
-                    onChanged: onChanged,
-                  ),
-            onKetik: home == null
-                ? null
-                : () => openKetik(
-                    context,
-                    businessToday: home.today.businessDate,
-                    onChanged: onChanged,
-                  ),
-          ),
-        ],
-      ),
+      body: home == null
+          ? _FirstLoadState(viewModel: viewModel)
+          : RefreshIndicator(
+              onRefresh: viewModel.load,
+              child: _HomeList(
+                home: home,
+                errorMessage: viewModel.errorMessage,
+                guidedEntry: isGuidedEntryDue
+                    ? _GuidedEntryCard(onLewati: session!.finishGuidedEntry)
+                    : null,
+              ),
+            ),
     );
   }
 }
@@ -215,178 +218,319 @@ class _HomeList extends StatelessWidget {
   /// From a failed refresh, shown above the last loaded data.
   final String? errorMessage;
 
-  /// Shown first, above today's totals, while the guided entry is due.
+  /// Shown first, above the shortcuts, while the guided entry is due.
   final Widget? guidedEntry;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final refreshError = errorMessage;
+    final cards = home.cards;
+    final masukToday = home.entries
+        .where((entry) => entry.direction == Direction.masuk)
+        .fold(0, (sum, entry) => sum + entry.total);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       children: [
-        if (refreshError != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              refreshError,
-              style: TextStyle(color: colorScheme.error),
-            ),
+        _TodayHeader(today: home.today, comparisons: home.comparisons),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            MalasSpace.screen,
+            MalasSpace.s8,
+            MalasSpace.screen,
+            MalasSpace.s24,
           ),
-        ?guidedEntry,
-        _TodayTotals(today: home.today, comparisons: home.comparisons),
-        const SizedBox(height: 16),
-        ..._buildCards(home.cards),
-        if (home.entries.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Catatan hari ini',
-            style: Theme.of(context).textTheme.titleSmall,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (refreshError != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: MalasSpace.s12),
+                  child: Text(
+                    refreshError,
+                    style: MalasText.bodySecondary.copyWith(
+                      color: MalasColors.textError,
+                    ),
+                  ),
+                ),
+              ?guidedEntry,
+              if (cards.hasOpenBalances || cards.dueToday != null) ...[
+                _Shortcuts(cards: cards),
+                const SizedBox(height: MalasSpace.s24),
+              ],
+              for (final attention in _attentionLines(cards)) ...[
+                _AttentionCard(text: attention),
+                const SizedBox(height: MalasSpace.s12),
+              ],
+              if (home.entries.isNotEmpty) ...[
+                const SizedBox(height: MalasSpace.s12),
+                SectionHeader(
+                  title: 'Hari ini',
+                  trailing: masukToday == 0
+                      ? null
+                      : MoneyText(masukToday, sign: MoneySign.masuk),
+                ),
+                RowsCard(
+                  rows: [
+                    for (final entry in home.entries) EntryRowFor(entry: entry),
+                  ],
+                ),
+              ],
+            ],
           ),
-          for (final entry in home.entries) _EntryTile(entry: entry),
-        ],
+        ),
       ],
     );
   }
 }
 
-/// One card per thing that has something, in the order spec §6 lists them.
-List<Widget> _buildCards(HomeCards cards) {
-  final dueToday = cards.dueToday;
+/// Cards that need a look, in the order spec §6 lists them.
+List<String> _attentionLines(HomeCards cards) {
   final queuedReads = cards.queuedReads;
   return [
-    for (final alert in cards.alerts)
-      _HomeCard(icon: Icons.notifications_active_outlined, text: alert.message),
+    for (final alert in cards.alerts) alert.message,
     if (cards.missedDays.isNotEmpty)
-      _HomeCard(
-        icon: Icons.event_busy_outlined,
-        text:
-            'Belum dicatat: ${cards.missedDays.map(formatWeekdayShort).join(', ')}',
-      ),
-    if (cards.hasOpenBalances)
-      _HomeCard(
-        icon: Icons.account_balance_wallet_outlined,
-        text: _describeOpenBalances(cards),
-        buildRoute: PiutangUtangView.route,
-      ),
-    if (dueToday != null)
-      _HomeCard(
-        icon: Icons.schedule_outlined,
-        text: 'Jatuh tempo hari ini: $dueToday',
-      ),
-    if (queuedReads != null)
-      _HomeCard(
-        icon: Icons.hourglass_top_outlined,
-        text: '$queuedReads menunggu dibaca',
-      ),
+      'Belum dicatat: ${cards.missedDays.map(formatWeekdayShort).join(', ')}',
+    if (queuedReads != null) '$queuedReads menunggu dibaca',
   ];
 }
 
-String _describeOpenBalances(HomeCards cards) {
-  final piutang = cards.piutang;
-  final utang = cards.utang;
-  return [
-    if (piutang != null) 'Piutang ${formatRupiah(piutang)}',
-    if (utang != null) 'Utang ${formatRupiah(utang)}',
-  ].join(' · ');
-}
-
-class _TodayTotals extends StatelessWidget {
-  const _TodayTotals({required this.today, required this.comparisons});
+/// A1 Kepala: the store, today's Masuk large, comparisons as chips and
+/// Keluar on a darker bar.
+class _TodayHeader extends StatelessWidget {
+  const _TodayHeader({required this.today, required this.comparisons});
 
   final DayTotals today;
   final List<Comparison> comparisons;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final comparisonText = comparisons
-        .map(
-          (comparison) =>
-              '${comparison.label} ${formatRupiah(comparison.masuk)}',
-        )
-        .join(' · ');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _Total(label: 'Masuk', amount: today.masuk),
+    final account = context.watch<SessionViewModel?>()?.account;
+    final onBrandSecondary = MalasText.bodySecondary.copyWith(
+      color: MalasColors.textOnBrandSecondary,
+    );
+    return BrandHeader(
+      // Without a session, as in a test that shows Beranda alone, it reads
+      // "Beranda".
+      title: account?.store.name ?? 'Beranda',
+      subtitle: formatEntryDate(today.businessDate),
+      height: 330,
+      actions: [
+        if (account != null)
+          IconButton(
+            tooltip: 'Pengaturan',
+            color: MalasColors.textOnBrand,
+            onPressed: () =>
+                Navigator.of(context).push(SettingsView.route(account)),
+            icon: const Icon(MalasIcons.gear),
+          ),
+      ],
+      controls: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Masuk hari ini', style: onBrandSecondary),
+          MoneyText(
+            today.masuk,
+            size: MoneySize.hero,
+            color: MalasColors.textOnBrand,
+          ),
+          if (comparisons.isNotEmpty)
+            Wrap(
+              spacing: MalasSpace.s8,
+              runSpacing: MalasSpace.s4,
+              children: [
+                for (final comparison in comparisons)
+                  _OnBrandChip(
+                    '${comparison.label} ${formatRupiah(comparison.masuk)}',
+                  ),
+              ],
             ),
-            Expanded(
-              child: _Total(label: 'Keluar', amount: today.keluar),
+          const SizedBox(height: MalasSpace.s8),
+          Container(
+            height: MalasSize.touch,
+            padding: const EdgeInsets.symmetric(horizontal: MalasSpace.s16),
+            decoration: BoxDecoration(
+              color: MalasColors.bgBrandPressed,
+              borderRadius: BorderRadius.circular(MalasRadius.md),
             ),
-          ],
-        ),
-        if (comparisonText.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(comparisonText, style: textTheme.bodySmall),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Keluar hari ini', style: onBrandSecondary),
+                ),
+                MoneyText(
+                  today.keluar,
+                  sign: MoneySign.keluar,
+                  color: MalasColors.textOnBrand,
+                ),
+              ],
+            ),
+          ),
         ],
-      ],
-    );
-  }
-}
-
-class _Total extends StatelessWidget {
-  const _Total({required this.label, required this.amount});
-
-  final String label;
-  final int amount;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: textTheme.labelLarge),
-        Text(formatRupiah(amount), style: textTheme.headlineSmall),
-      ],
-    );
-  }
-}
-
-class _HomeCard extends StatelessWidget {
-  const _HomeCard({required this.icon, required this.text, this.buildRoute});
-
-  final IconData icon;
-  final String text;
-
-  /// The screen a tap opens, for cards that lead somewhere.
-  final Route<void> Function()? buildRoute;
-
-  @override
-  Widget build(BuildContext context) {
-    final buildRoute = this.buildRoute;
-    return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(text),
-        onTap: buildRoute == null
-            ? null
-            : () => Navigator.of(context).push(buildRoute()),
       ),
     );
   }
 }
 
-class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry});
+class _OnBrandChip extends StatelessWidget {
+  const _OnBrandChip(this.label);
 
-  final Transaction entry;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final isMasuk = entry.direction == Direction.masuk;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(isMasuk ? Icons.south_west : Icons.north_east),
-      title: Text(describeEntry(entry)),
-      subtitle: entry.isFullyPaid
-          ? null
-          : Text('Sisa ${formatRupiah(entry.remaining)}'),
-      trailing: Text(formatEntryTotal(entry)),
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: MalasSpace.s8,
+        vertical: MalasSpace.s4,
+      ),
+      decoration: BoxDecoration(
+        color: MalasColors.bgBrandPressed,
+        borderRadius: BorderRadius.circular(MalasRadius.xs),
+      ),
+      child: Text(
+        label,
+        style: MalasText.labelTag.copyWith(color: MalasColors.textOnBrand),
+      ),
+    );
+  }
+}
+
+/// §3 shortcut row: Piutang, Utang and Jatuh tempo tiles in equal columns.
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts({required this.cards});
+
+  final HomeCards cards;
+
+  @override
+  Widget build(BuildContext context) {
+    final piutang = cards.piutang;
+    final utang = cards.utang;
+    final dueToday = cards.dueToday;
+    void openBalances() => Navigator.of(context).push(PiutangUtangView.route());
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (piutang != null)
+          _ShortcutTile(
+            label: 'Piutang',
+            value: formatRupiah(piutang),
+            icon: MalasIcons.usersThreeFill,
+            tone: CategoryTone.minuman,
+            onTap: openBalances,
+          ),
+        if (utang != null)
+          _ShortcutTile(
+            label: 'Utang',
+            value: formatRupiah(utang),
+            icon: MalasIcons.handCoinsFill,
+            tone: CategoryTone.jeruk,
+            onTap: openBalances,
+          ),
+        if (dueToday != null)
+          _ShortcutTile(
+            label: 'Jatuh tempo',
+            value: '$dueToday hari ini',
+            icon: MalasIcons.calendarBlankFill,
+            tone: CategoryTone.merah,
+            onTap: openBalances,
+          ),
+      ],
+    );
+  }
+}
+
+class _ShortcutTile extends StatelessWidget {
+  const _ShortcutTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.tone,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final CategoryTone tone;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: '$label $value',
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            children: [
+              SizedBox(
+                width: 60,
+                child: LipPressable(
+                  onPressed: onTap,
+                  fill: tone.base,
+                  lip: tone.lip,
+                  borderRadius: BorderRadius.circular(MalasRadius.shortcut),
+                  child: SizedBox(
+                    height: 56,
+                    child: Icon(icon, size: 28, color: MalasColors.iconOnInk),
+                  ),
+                ),
+              ),
+              const SizedBox(height: MalasSpace.s4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: MalasText.labelChip,
+              ),
+              Text(
+                value,
+                textAlign: TextAlign.center,
+                style: MalasText.bodySecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// §3 attention card: highlight fill, attention stroke and lip.
+class _AttentionCard extends StatelessWidget {
+  const _AttentionCard({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: MalasSize.row),
+      padding: const EdgeInsets.symmetric(
+        horizontal: MalasSpace.s16,
+        vertical: MalasSpace.s12,
+      ),
+      decoration: BoxDecoration(
+        color: MalasColors.bgHighlight,
+        borderRadius: BorderRadius.circular(MalasRadius.lg),
+        border: Border.all(
+          color: MalasColors.borderAttention,
+          width: MalasSize.cardStroke,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            MalasIcons.warningFill,
+            size: 20,
+            color: MalasColors.borderAttentionLip,
+          ),
+          const SizedBox(width: MalasSpace.s12),
+          Expanded(child: Text(text, style: MalasText.bodyStrong)),
+        ],
+      ),
     );
   }
 }
@@ -431,77 +575,6 @@ class _GuidedEntryCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Ketik opens its quick amount. Bicara and Foto read first, then open the
-/// draft screen with what was read (§8.2).
-class _RecordButtons extends StatelessWidget {
-  const _RecordButtons({
-    required this.onBicara,
-    required this.onFoto,
-    required this.onKetik,
-  });
-
-  final VoidCallback? onBicara;
-  final VoidCallback? onFoto;
-
-  final VoidCallback? onKetik;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
-          children: [
-            for (final (label, icon, onPressed) in [
-              ('Bicara', Icons.mic, onBicara),
-              ('Foto', Icons.photo_camera, onFoto),
-              ('Ketik', Icons.keyboard, onKetik),
-            ])
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: FilledButton.tonalIcon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(64),
-                    ),
-                    onPressed: onPressed,
-                    icon: Icon(icon),
-                    label: Text(label),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The business name opens Settings (§6). Without a session, as in a test
-/// that shows Beranda alone, it reads "Beranda".
-class _StoreNameTitle extends StatelessWidget {
-  const _StoreNameTitle();
-
-  @override
-  Widget build(BuildContext context) {
-    final account = context.watch<SessionViewModel?>()?.account;
-    if (account == null) return const Text('Beranda');
-    return InkWell(
-      onTap: () => Navigator.of(context).push(SettingsView.route(account)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(account.store.name, overflow: TextOverflow.ellipsis),
-          ),
-          const Icon(Icons.expand_more),
-        ],
       ),
     );
   }
