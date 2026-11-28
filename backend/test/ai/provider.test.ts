@@ -80,3 +80,18 @@ test("failsAfterOneRetrySoTheCallerReturnsAnEmptyDraft", async () => {
   assert.deepEqual(result, { isRead: false, failures: ["attempt 1: no reply within 20 s", "attempt 2: HTTP 500"] });
   assert.equal(bodies.length, 2);
 });
+
+test("setsMinimalThinkingAndMediumMediaResolutionOnlyForImages", async () => {
+  const bodies = mockFetch([{ parts: [{ text: '{"lines":[]}' }] }, { parts: [{ text: '{"lines":[]}' }] }]);
+  await callModel(request, readLines);
+  await callModel({ ...request, image: { mimeType: "image/jpeg", base64: "AAAA" } }, readLines);
+  assert.deepEqual(bodies[0]?.generationConfig, {
+    temperature: 0,
+    thinkingConfig: { thinkingLevel: "minimal" },
+  });
+  assert.deepEqual(bodies[1]?.generationConfig, {
+    temperature: 0,
+    thinkingConfig: { thinkingLevel: "minimal" },
+    mediaResolution: "MEDIA_RESOLUTION_MEDIUM",
+  });
+});

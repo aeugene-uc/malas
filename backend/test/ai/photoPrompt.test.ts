@@ -34,3 +34,10 @@ test("everyPhotoPromptTellsTheModelToCopyAndNotCalculate", () => {
 test("tellsTheModelNotToReadTheCashPaidOrChangeAsTheTotal", () => {
   assert.match(RECEIPT_SYSTEM_PROMPT, /Not the cash paid and not the change \(TUNAI, KEMBALI\)/);
 });
+
+test("tellsPhotoPromptsToReturnCompactJsonAndOmitNullFields", () => {
+  for (const prompt of [RECEIPT_SYSTEM_PROMPT, NOTEBOOK_SYSTEM_PROMPT, PRICE_LIST_SYSTEM_PROMPT]) {
+    assert.match(prompt, /compact single-line JSON/i);
+    assert.match(prompt, /omit (?:null|absent) fields/i);
+  }
+});

@@ -14,53 +14,44 @@ export type HeardPage = {
 
 export type HeardPriceItem = { name: string; priceText: string; unit: string | null };
 
-const LINE_FIELDS = `{"direction":"IN"|"OUT","name":string|null,"quantityText":string|null,"unit":string|null,"unitPriceText":string|null,"amountText":string|null,"confidence":number}`;
+const LINE_FIELDS = `{"direction":"IN"|"OUT","name"?:string,"quantityText"?:string,"unit"?:string,"unitPriceText"?:string,"amountText"?:string,"confidence":number}`;
 
-const SHARED_RULES = `You never calculate or correct anything. Copy numbers exactly as the image shows them, even when a total does not add up. If something is not readable, use null and a confidence below 0.6.
-
+const SHARED_RULES = `Never calculate or correct anything. Copy numbers exactly as shown, even when a total does not add up. If unreadable, omit the field and use a confidence below 0.6.
+Return compact single-line JSON with no extra whitespace and omit null fields.
 Line fields:
-- direction: see the rules for this kind of page.
-- name: the item or what the money was for, without the words jual, beli or bayar. null when the row only has an amount.
-- quantityText: how many, as written ("2", "0,5").
-- unit: only one of ${UNITS.join(", ")}, when written. A printed L or ltr is liter. Otherwise null.
-- unitPriceText: the price of one unit, when the row shows one.
-- amountText: the total of that row, as written.
-- confidence: 0 to 1, how sure you are of the row.
+- direction: see the page rule above.
+- name: item or purpose, without jual, beli or bayar. Omit when the row only has an amount.
+- quantityText: count as written ("2", "0,5").
+- unit: only ${UNITS.join(", ")} when written (printed L or ltr is liter).
+- unitPriceText: price of one unit, when shown.
+- amountText: row total, as written.
+- confidence: 0 to 1.
+Use today's date in the message to fill a missing year. Write dates as YYYY-MM-DD.`;
 
-The message gives today's date. Use it to fill in a year that the page leaves out. Write dates as YYYY-MM-DD.`;
-
-export const RECEIPT_SYSTEM_PROMPT = `You read a photo of a receipt, supplier nota or sales note from a small business in Indonesia. Return ONLY a JSON object, no explanation and no code fence:
-
-{"seller":string|null,"date":string|null,"totalText":string|null,"lines":[${LINE_FIELDS}]}
-
-- seller: the shop name printed at the top.
-- date: the date printed on it.
-- totalText: the grand total as printed (TOTAL, JUMLAH, GRAND TOTAL). Not the cash paid and not the change (TUNAI, KEMBALI).
-- lines: one per item row. Skip subtotal, discount, tax, payment and change rows. The printed total already covers them.
+export const RECEIPT_SYSTEM_PROMPT = `Read this Indonesian receipt, supplier nota or sales note. Return ONLY compact single-line JSON, no explanation and no code fence:
+{"seller"?:string,"date"?:string,"totalText"?:string,"lines":[${LINE_FIELDS}]}
+- seller: shop name printed at the top.
+- date: date printed on it.
+- totalText: grand total as printed (TOTAL, JUMLAH, GRAND TOTAL). Not the cash paid and not the change (TUNAI, KEMBALI).
+- lines: one per item row. Skip subtotal, discount, tax, payment and change rows.
 - Write printed amounts as digits only, without Rp, dots or commas: "30.000" becomes "30000".
-- direction: OUT when the owner bought the goods. That is the usual case for a store receipt or a supplier nota. IN only when the document is a sale the owner made.
-
+- direction: OUT for a purchase receipt or supplier nota; IN only for a sale the owner made.
 ${SHARED_RULES}`;
 
-export const NOTEBOOK_SYSTEM_PROMPT = `You read a photo of a handwritten notebook page where a small business owner in Indonesia wrote down money in and money out. Return ONLY a JSON object, no explanation and no code fence:
-
-{"date":string|null,"lines":[${LINE_FIELDS}]}
-
-- date: the date written at the top of the page.
+export const NOTEBOOK_SYSTEM_PROMPT = `Read this Indonesian handwritten notebook page of money in and out. Return ONLY compact single-line JSON, no explanation and no code fence:
+{"date"?:string,"lines":[${LINE_FIELDS}]}
+- date: date written at the top.
 - lines: one per row, in order.
 - Copy handwritten amounts as written, including "rb", "k", "jt" or dots: "15rb", "25.000".
-- direction: IN for sales and money received (jual, masuk, terima). OUT for purchases and expenses (beli, belanja, keluar, bayar). Use the column or the word on the row.
-
+- direction: IN for sales/money received (jual, masuk, terima); OUT for purchases/expenses (beli, belanja, keluar, bayar). Use the column or the word on the row.
 ${SHARED_RULES}`;
 
-export const PRICE_LIST_SYSTEM_PROMPT = `You read a photo of a price list or menu from a small business in Indonesia. Return ONLY a JSON object, no explanation and no code fence:
-
-{"items":[{"name":string,"priceText":string,"unit":string|null}]}
-
+export const PRICE_LIST_SYSTEM_PROMPT = `Read this Indonesian price list or menu photo. Return ONLY compact single-line JSON, no explanation and no code fence, and omit absent fields:
+{"items":[{"name":string,"priceText":string,"unit"?:string}]}
 - One object per item that has a price.
-- priceText: the price as written ("15.000", "15rb"). Do not convert it.
-- unit: only one of ${UNITS.join(", ")}, when written. Otherwise null.
-- You never calculate. Skip anything without a price.`;
+- priceText: price as written ("15.000", "15rb"). Do not convert it.
+- unit: only ${UNITS.join(", ")} when written.
+- Never calculate. Skip anything without a price.`;
 
 // The model's reply is a trust boundary (CLAUDE.md), so every field is checked
 // and anything outside the contract throws. callModel then retries once.
