@@ -54,7 +54,7 @@ async function requestCompletion(request: AiRequest): Promise<{ text: string; to
     body: JSON.stringify({
       system_instruction: { parts: [{ text: request.systemPrompt }] },
       contents: [{ role: "user", parts: buildUserParts(request) }],
-      generationConfig: { temperature: 0 },
+      generationConfig: buildGenerationConfig(request),
     }),
     signal: AbortSignal.timeout(AI_TIMEOUT_MS),
   });
@@ -62,6 +62,20 @@ async function requestCompletion(request: AiRequest): Promise<{ text: string; to
     throw new Error(`HTTP ${response.status}`);
   }
   return readCompletion(await response.json());
+}
+
+// Minimal thinking prevents latency spikes on Gemini 3.5 Flash-Lite; medium
+// image resolution cuts receipt/notebook input tokens ~40% while keeping small
+// printed digits legible.
+function buildGenerationConfig(request: AiRequest): Record<string, unknown> {
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0,
+    thinkingConfig: { thinkingLevel: "minimal" },
+  };
+  if (request.image !== undefined) {
+    generationConfig.mediaResolution = "MEDIA_RESOLUTION_MEDIUM";
+  }
+  return generationConfig;
 }
 
 // The model card puts the image before the text.
