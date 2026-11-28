@@ -48,48 +48,50 @@ class BrandHeader extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              MalasSpace.screen,
-              topInset + MalasSpace.s20,
-              MalasSpace.screen,
-              0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: MalasText.titleScreen.copyWith(
-                              color: MalasColors.textOnBrand,
-                            ),
-                          ),
-                          if (subtitle != null)
+          LayoutBuilder(
+            builder: (context, constraints) => Padding(
+              padding: EdgeInsets.fromLTRB(
+                sidePaddingFor(constraints.maxWidth),
+                topInset + MalasSpace.s20,
+                sidePaddingFor(constraints.maxWidth),
+                0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              subtitle,
-                              style: MalasText.bodySecondary.copyWith(
-                                color: MalasColors.textOnBrandSecondary,
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: MalasText.titleScreen.copyWith(
+                                color: MalasColors.textOnBrand,
                               ),
                             ),
-                        ],
+                            if (subtitle != null)
+                              Text(
+                                subtitle,
+                                style: MalasText.bodySecondary.copyWith(
+                                  color: MalasColors.textOnBrandSecondary,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    ...actions,
+                      ...actions,
+                    ],
+                  ),
+                  if (controls != null) ...[
+                    const SizedBox(height: MalasSpace.s16),
+                    controls,
                   ],
-                ),
-                if (controls != null) ...[
-                  const SizedBox(height: MalasSpace.s16),
-                  controls,
                 ],
-              ],
+              ),
             ),
           ),
         ],

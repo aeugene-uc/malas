@@ -233,10 +233,10 @@ class _HomeList extends StatelessWidget {
       children: [
         _TodayHeader(today: home.today, comparisons: home.comparisons),
         Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MalasSpace.screen,
+          padding: EdgeInsets.fromLTRB(
+            sidePaddingFor(MediaQuery.sizeOf(context).width),
             MalasSpace.s8,
-            MalasSpace.screen,
+            sidePaddingFor(MediaQuery.sizeOf(context).width),
             MalasSpace.s24,
           ),
           child: Column(

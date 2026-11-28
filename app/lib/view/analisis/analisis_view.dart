@@ -71,10 +71,10 @@ class _AnalisisScreen extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                MalasSpace.screen,
+              padding: EdgeInsets.fromLTRB(
+                sidePaddingFor(MediaQuery.sizeOf(context).width),
                 MalasSpace.s8,
-                MalasSpace.screen,
+                sidePaddingFor(MediaQuery.sizeOf(context).width),
                 MalasSpace.s24,
               ),
               child: Column(

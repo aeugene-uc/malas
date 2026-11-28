@@ -95,6 +95,7 @@ class _NavEdgePainter extends CustomPainter {
         MalasSize.lip -
         MalasSize.navMic / 2;
     final radius = MalasSize.navMic / 2 + _bumpGap;
+    assert(radius - micCentreY == MalasSize.navBumpRise);
     final centre = Offset(size.width / 2, micCentreY);
     final halfGap = math.sqrt(radius * radius - micCentreY * micCentreY);
     final startAngle = math.atan2(-micCentreY, -halfGap);
