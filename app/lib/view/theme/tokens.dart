@@ -169,7 +169,7 @@ abstract final class MalasSize {
   static const buttonKecil = 44.0;
   static const row = 72.0;
   static const categoryTile = 40.0;
-  static const navBar = 92.0;
+  static const navBar = 76.0;
   static const navMic = 64.0;
   static const lip = 4.0;
   static const cardStroke = 2.0;

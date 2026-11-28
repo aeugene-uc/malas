@@ -185,7 +185,9 @@ class _DateChips extends StatelessWidget {
           ),
           const SizedBox(width: MalasSpace.s8),
           _OnBrandLipChip(
-            label: pickedDate ?? 'Pilih tanggal',
+            label: pickedDate == null
+                ? 'Pilih tanggal'
+                : formatEntryDate(pickedDate),
             isSelected: viewModel.dateChoice == DateChoice.pilihTanggal,
             onPressed: () => _pickDate(context, viewModel),
           ),
@@ -545,11 +547,18 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
     _quantityController = TextEditingController(text: line.quantity ?? '');
     _unitController = TextEditingController(text: line.unit ?? '');
     _unitPriceController = TextEditingController(
-      text: line.unitPrice?.toString() ?? '',
+      text: _groupedOrEmpty(line.unitPrice),
     );
     _lineTotalController = TextEditingController(
-      text: line.lineTotal?.toString() ?? '',
+      text: _groupedOrEmpty(line.lineTotal),
     );
+  }
+
+  /// A Retur line is negative, and the field shows only digits and dots,
+  /// so the sign comes back from the line being edited.
+  int? _withOriginalSign(int? typedTotal) {
+    final isNegative = (widget.line.lineTotal ?? 0) < 0;
+    return isNegative && typedTotal != null ? -typedTotal : typedTotal;
   }
 
   @override
@@ -619,6 +628,7 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
           TextField(
             controller: _unitPriceController,
             keyboardType: TextInputType.number,
+            inputFormatters: [RupiahInputFormatter()],
             style: MalasText.moneyRow,
             decoration: const InputDecoration(labelText: 'Harga satuan'),
           ),
@@ -626,6 +636,7 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
           TextField(
             controller: _lineTotalController,
             keyboardType: TextInputType.number,
+            inputFormatters: [RupiahInputFormatter()],
             style: MalasText.moneyRow,
             decoration: const InputDecoration(labelText: 'Total'),
           ),
@@ -638,7 +649,9 @@ class _LineEditorSheetState extends State<LineEditorSheet> {
                 quantity: parseQuantityInput(_quantityController.text),
                 unit: _emptyToNull(_unitController.text),
                 unitPrice: parseRupiahInput(_unitPriceController.text),
-                lineTotal: parseRupiahInput(_lineTotalController.text),
+                lineTotal: _withOriginalSign(
+                  parseRupiahInput(_lineTotalController.text),
+                ),
               ),
             ),
           ),
@@ -696,6 +709,9 @@ String? describeQuantity(DraftLine line) {
 
 /// A typed rupiah amount, read as whole rupiah: "12.500", "12500" and
 /// "Rp 12.500" are all 12500. Empty means no amount.
+String _groupedOrEmpty(int? amount) =>
+    amount == null ? '' : groupThousands(amount.abs());
+
 int? parseRupiahInput(String text) {
   final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
   return digits.isEmpty ? null : int.parse(digits);

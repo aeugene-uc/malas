@@ -184,6 +184,14 @@ void main() {
     expect(draft.linkedTransactionId, 'trx-2');
   });
 
+  testWidgets('ubahShowsThePickedDateAsADayNotAnIsoDate', (tester) async {
+    await openCopyOfGas(tester, 'Ubah');
+
+    expect(find.text('2026-11-15'), findsNothing);
+    // The header and the picked-date chip.
+    expect(find.text('Min, 15 Nov'), findsNWidgets(2));
+  });
+
   /// Ubah on Gas, its total changed to Rp 30.000, then Simpan.
   Future<void> editGasTo30000(WidgetTester tester) async {
     final draft = await openCopyOfGas(tester, 'Ubah');

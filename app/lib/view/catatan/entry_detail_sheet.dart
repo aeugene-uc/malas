@@ -450,13 +450,13 @@ class _DetailsCard extends StatelessWidget {
     final lines = transaction.lines;
     if (lines.isEmpty) {
       return [
-        _DetailRow(label: 'Jumlah', value: MoneyText.forEntry(transaction)),
+        _DetailRow(label: 'Total', value: MoneyText.forEntry(transaction)),
       ];
     }
     if (lines.length == 1) {
       return [
         _DetailRow(
-          label: 'Jumlah',
+          label: 'Total',
           value: _buildSingleLineValue(lines.single),
         ),
       ];
