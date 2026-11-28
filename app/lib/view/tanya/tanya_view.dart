@@ -57,10 +57,10 @@ class _TanyaScreenState extends State<_TanyaScreen> {
           Expanded(
             child: ListView(
               reverse: true,
-              padding: const EdgeInsets.fromLTRB(
-                MalasSpace.screen,
+              padding: EdgeInsets.fromLTRB(
+                sidePaddingFor(MediaQuery.sizeOf(context).width),
                 MalasSpace.s8,
-                MalasSpace.screen,
+                sidePaddingFor(MediaQuery.sizeOf(context).width),
                 MalasSpace.s16,
               ),
               children: [
@@ -125,11 +125,11 @@ class _QuestionComposer extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MalasSpace.screen,
+          padding: EdgeInsets.fromLTRB(
+            sidePaddingFor(MediaQuery.sizeOf(context).width),
             MalasSpace.s12,
-            MalasSpace.screen,
-            MalasSpace.s12,
+            sidePaddingFor(MediaQuery.sizeOf(context).width),
+            MalasSpace.s12 + MalasSize.navBumpRise,
           ),
           child: Row(
             children: [

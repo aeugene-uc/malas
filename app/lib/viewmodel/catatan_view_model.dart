@@ -23,6 +23,7 @@ class CatatanViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _errorMessage;
+  String? _selectedId;
 
   TransactionFilter get filter => _filter;
   List<Transaction> get transactions => _transactions;
@@ -30,6 +31,20 @@ class CatatanViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;
+
+  /// The entry shown beside the list on a wide screen: the one picked, or
+  /// the newest when the picked one is gone from the list.
+  Transaction? get selectedTransaction {
+    for (final transaction in _transactions) {
+      if (transaction.id == _selectedId) return transaction;
+    }
+    return _transactions.firstOrNull;
+  }
+
+  void select(Transaction transaction) {
+    _selectedId = transaction.id;
+    notifyListeners();
+  }
 
   Future<void> load() async {
     _isLoading = true;

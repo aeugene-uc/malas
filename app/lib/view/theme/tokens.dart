@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// DESIGN.md §1.1, Terong mode. The only place colours are written.
@@ -171,7 +173,19 @@ abstract final class MalasSize {
   static const categoryTile = 40.0;
   static const navBar = 76.0;
   static const navMic = 64.0;
+
+  /// How far the curve around the mic rises above the nav bar, so a bar
+  /// fixed at the bottom of a tab can keep clear of it.
+  static const navBumpRise = 26.0;
   static const lip = 4.0;
   static const cardStroke = 2.0;
   static const headerHeight = 262.0;
+
+  /// The widest a column of text and cards grows on a tablet.
+  static const readingColumn = 640.0;
 }
+
+/// Side padding for content [width] wide: the usual 20 on a phone, wider on
+/// a tablet so text and cards stay in a column one can read across.
+double sidePaddingFor(double width) =>
+    math.max(MalasSpace.screen, (width - MalasSize.readingColumn) / 2);
