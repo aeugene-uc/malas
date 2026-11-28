@@ -45,6 +45,8 @@ void main() {
 
     expect(find.byType(EntryDetailPane), findsOneWidget);
     expect(find.text('Ubah'), findsOneWidget);
+    // The pane starts at the top, level with the list, not floating midway.
+    expect(tester.getTopLeft(find.byType(EntryDetailPane)).dy, 0);
     expect(isHighlighted(tester, 'Nasi goreng, Es teh'), isTrue);
   });
 

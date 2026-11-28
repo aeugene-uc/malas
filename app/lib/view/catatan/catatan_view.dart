@@ -212,6 +212,7 @@ class _CatatanScreenState extends State<_CatatanScreen> {
     final selected = viewModel.selectedTransaction;
     return Scaffold(
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
             width: listWidthFor(screenWidth),
