@@ -11,6 +11,7 @@ import 'package:malas/data/mock_api_adapter.dart';
 import 'package:malas/data/mock_bodies.dart';
 import 'package:malas/model/draft.dart';
 import 'package:malas/view/draft/draft_view.dart';
+import 'package:malas/viewmodel/draft_view_model.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -88,34 +89,28 @@ void main() {
   });
 
   testWidgets('aReturDraftReadsReturNotBelumDibayar', (tester) async {
-    final retur = Draft.fromJson(const {
-      'direction': 'IN',
-      'total': -30000,
-      'personId': null,
-      'personName': null,
-      'dueDate': null,
-      'source': 'TYPED',
-      'inputId': null,
-      'note': null,
-      'linkedTransactionId': 'trx-1',
-      'lines': [
-        {
-          'itemId': 'item-1',
-          'itemName': 'Nasi goreng',
-          'categoryId': 'cat-1',
-          'quantity': '-2',
-          'unit': 'porsi',
-          'unitPrice': 15000,
-          'lineTotal': -30000,
-        },
-      ],
-      'payments': <Object?>[],
-    });
-    await _openDraftFromHost(tester, _RecordingAdapter(), drafts: [retur]);
+    await _openDraftFromHost(tester, _RecordingAdapter(), drafts: [_retur()]);
 
     expect(find.text('Retur'), findsOneWidget);
     expect(find.text('Belum dibayar'), findsNothing);
     expect(find.bySemanticsLabel('\u2212Rp 30.000'), findsWidgets);
+  });
+
+  testWidgets('ubahBarisShowsDotsAndKeepsAReturLineNegative', (tester) async {
+    await _openDraftFromHost(tester, _RecordingAdapter(), drafts: [_retur()]);
+
+    await tester.tap(find.text('Nasi goreng'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, '15.000'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '30.000'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, '30.000'), '45000');
+    expect(find.widgetWithText(TextField, '45.000'), findsOneWidget);
+    await tester.tap(find.text('Pakai'));
+    await tester.pumpAndSettle();
+
+    final draftScreen = tester.element(find.byType(DraftView));
+    expect(draftScreen.read<DraftViewModel>().drafts.single.total, -45000);
   });
 
   group('input parsing', () {
@@ -215,4 +210,31 @@ class _RecordingAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// Nasi goreng taken back: 2 porsi at Rp 15.000, linked to trx-1.
+Draft _retur() {
+  return Draft.fromJson(const {
+    'direction': 'IN',
+    'total': -30000,
+    'personId': null,
+    'personName': null,
+    'dueDate': null,
+    'source': 'TYPED',
+    'inputId': null,
+    'note': null,
+    'linkedTransactionId': 'trx-1',
+    'lines': [
+      {
+        'itemId': 'item-1',
+        'itemName': 'Nasi goreng',
+        'categoryId': 'cat-1',
+        'quantity': '-2',
+        'unit': 'porsi',
+        'unitPrice': 15000,
+        'lineTotal': -30000,
+      },
+    ],
+    'payments': <Object?>[],
+  });
 }
