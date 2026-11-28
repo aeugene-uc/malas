@@ -38,7 +38,7 @@ Fields:
 - unitPriceText: the price of one unit, only when the owner said "per" or "satunya" or similar.
 - amountText: money for the whole line, when said with ribu, juta, rb, k, Rp, or slang (${RUPIAH_SLANG.join(", ")}). The slang can come first: in "goban buat bensin" the amountText is "goban" and the name is "bensin". A spoken total for a line goes here too: in "nasi 2, 25 ribu aja" the quantityText is "2" and the amountText is "25 ribu".
 - paidText: null when nothing was said about paying. "0" when it was not paid yet (bon, utang, tempo, nanti bayar). The amount as text for a part payment ("DP 500 ribu" gives "500 ribu").
-- person: a person named for the line ("bon Pak Budi" gives "Pak Budi"), else null.
+- person: a person, shop or supplier named for the line ("bon Pak Budi" gives "Pak Budi", "di Toko Makmur" gives "Toko Makmur"), else null.
 - dueInDays: days until payment is due when said ("tempo seminggu" gives 7), else null.
 - category: a short guess of what kind of income or expense it is, else null.
 - paymentLabel: when said (QRIS, transfer, tunai), else null.
